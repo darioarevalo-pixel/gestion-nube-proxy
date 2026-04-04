@@ -8,115 +8,157 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f3; color: #1a1a1a; font-size: 14px; }
-    .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
     h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
     .subtitle { color: #888; font-size: 13px; margin-bottom: 24px; }
-
     .card { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
-
-    .connect-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-    .connect-row input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; outline: none; }
-    .connect-row input:focus { border-color: #378ADD; }
+    input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; outline: none; }
+    input:focus { border-color: #378ADD; }
     button { padding: 8px 16px; border: 1px solid #ddd; border-radius: 8px; background: #fff; font-size: 13px; cursor: pointer; transition: background 0.15s; }
     button:hover { background: #f5f5f3; }
     .btn-primary { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
     .btn-primary:hover { background: #333; }
-    .btn-demo { font-size: 12px; padding: 5px 12px; color: #888; }
-    #status { font-size: 12px; color: #888; margin-top: 6px; min-height: 18px; }
+    .btn-sm { font-size: 12px; padding: 5px 12px; color: #666; }
+    .btn-danger { font-size: 12px; padding: 5px 12px; color: #a32d2d; border-color: #f7c1c1; }
+    #status { font-size: 12px; color: #888; margin-top: 8px; min-height: 18px; }
     #status.error { color: #e24b4a; }
     #status.ok { color: #1d9e75; }
-
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .progress-bar { height: 4px; background: #e5e5e5; border-radius: 2px; margin-top: 8px; overflow: hidden; display: none; }
+    .progress-fill { height: 100%; background: #378ADD; border-radius: 2px; transition: width 0.3s; }
+    .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
     .stat { background: #f5f5f3; border-radius: 8px; padding: 14px; }
     .stat-label { font-size: 11px; color: #888; margin-bottom: 4px; }
-    .stat-value { font-size: 24px; font-weight: 600; }
+    .stat-value { font-size: 22px; font-weight: 600; }
     .stat-value.danger { color: #e24b4a; }
     .stat-value.warning { color: #ba7517; }
     .stat-value.success { color: #1d9e75; }
-
+    .stat-value.info { color: #185fa5; }
     .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
     .tab { padding: 6px 14px; border-radius: 8px; border: 1px solid #e5e5e5; font-size: 13px; cursor: pointer; background: #fff; color: #666; }
     .tab.active { background: #e6f1fb; color: #185fa5; border-color: #b5d4f4; font-weight: 500; }
-
     .section { display: none; }
     .section.visible { display: block; }
-
+    .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+    .toolbar input[type=text] { padding: 6px 10px; font-size: 13px; width: 220px; }
+    .toolbar select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; background: #fff; outline: none; }
     table { width: 100%; border-collapse: collapse; }
-    th { font-size: 11px; color: #888; font-weight: 500; text-align: left; padding: 8px 10px; background: #f5f5f3; border-bottom: 1px solid #e5e5e5; }
-    td { padding: 10px; border-bottom: 1px solid #f0f0f0; font-size: 13px; vertical-align: middle; }
+    th { font-size: 11px; color: #888; font-weight: 500; text-align: left; padding: 8px 10px; background: #f5f5f3; border-bottom: 1px solid #e5e5e5; cursor: pointer; user-select: none; white-space: nowrap; }
+    th:hover { color: #333; }
+    td { padding: 9px 10px; border-bottom: 1px solid #f0f0f0; font-size: 13px; vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: #fafafa; }
-
     .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 99px; font-weight: 500; }
     .badge-danger { background: #fcebeb; color: #a32d2d; }
     .badge-warning { background: #faeeda; color: #854f0b; }
     .badge-success { background: #eaf3de; color: #3b6d11; }
     .badge-info { background: #e6f1fb; color: #185fa5; }
-
+    .badge-gray { background: #f1efe8; color: #5f5e5a; }
     .mini-bar { height: 4px; border-radius: 2px; background: #e5e5e5; margin-top: 4px; overflow: hidden; width: 60px; }
     .mini-bar-fill { height: 100%; border-radius: 2px; }
-
     .chart-wrap { position: relative; width: 100%; }
     .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; font-size: 12px; color: #666; }
     .legend span { display: flex; align-items: center; gap: 4px; }
-    .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
-
+    .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
     #dashboard { display: none; }
-
-    @media (max-width: 600px) {
+    .sync-info { font-size: 11px; color: #aaa; margin-top: 6px; }
+    .pagination { display: flex; gap: 6px; align-items: center; margin-top: 12px; font-size: 13px; color: #666; }
+    .pagination button { padding: 4px 10px; font-size: 12px; }
+    @media (max-width: 768px) {
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
-      th:nth-child(3), td:nth-child(3),
-      th:nth-child(4), td:nth-child(4) { display: none; }
+      th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5) { display: none; }
     }
   </style>
 </head>
 <body>
 <div class="container">
-
   <h1>Monitor de vida útil</h1>
-  <p class="subtitle">Análisis de productos y variantes desde enero 2025</p>
+  <p class="subtitle">Análisis de productos y variantes — Gestión Nube</p>
 
   <div class="card">
-    <div class="connect-row">
-      <input type="password" id="api-key" placeholder="Tu API Key de Gestión Nube" />
-      <button class="btn-primary" onclick="connectAPI()">Conectar y analizar</button>
-      <button class="btn-demo" onclick="loadDemo()">Ver demo</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <input type="password" id="api-key" placeholder="Tu API Key de Gestión Nube" style="flex:1;min-width:200px;">
+      <button class="btn-primary" onclick="iniciarCarga()">Conectar y analizar</button>
+      <button class="btn-sm" onclick="sincronizar()">Actualizar datos</button>
+      <button class="btn-danger" onclick="borrarDatos()">Borrar caché</button>
     </div>
+    <div class="progress-bar" id="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
     <div id="status"></div>
+    <div class="sync-info" id="sync-info"></div>
   </div>
 
   <div id="dashboard">
-
     <div class="stats-grid">
-      <div class="stat"><div class="stat-label">Productos analizados</div><div class="stat-value" id="stat-total">—</div></div>
-      <div class="stat"><div class="stat-label">Sin ventas +30 días</div><div class="stat-value danger" id="stat-stale">—</div></div>
+      <div class="stat"><div class="stat-label">Productos</div><div class="stat-value" id="stat-total">—</div></div>
+      <div class="stat"><div class="stat-label">Sin ventas +30d</div><div class="stat-value danger" id="stat-stale">—</div></div>
       <div class="stat"><div class="stat-label">En declive</div><div class="stat-value warning" id="stat-decline">—</div></div>
       <div class="stat"><div class="stat-label">Creciendo</div><div class="stat-value success" id="stat-growth">—</div></div>
+      <div class="stat"><div class="stat-label">Variantes analizadas</div><div class="stat-value info" id="stat-variants">—</div></div>
     </div>
 
     <div class="tabs">
-      <button class="tab active" onclick="switchTab('tabla', this)">Tabla de productos</button>
-      <button class="tab" onclick="switchTab('ranking', this)">Ranking velocidad</button>
+      <button class="tab active" onclick="switchTab('productos', this)">Por producto</button>
+      <button class="tab" onclick="switchTab('variantes', this)">Por variante</button>
+      <button class="tab" onclick="switchTab('ranking', this)">Ranking</button>
       <button class="tab" onclick="switchTab('curva', this)">Curva de vida</button>
       <button class="tab" onclick="switchTab('stock', this)">Stock vs demanda</button>
     </div>
 
-    <div id="tab-tabla" class="section visible">
-      <div class="card" style="padding: 0; overflow: hidden;">
+    <div id="tab-productos" class="section visible">
+      <div class="toolbar">
+        <input type="text" id="search-prod" placeholder="Buscar producto..." oninput="renderProductos()">
+        <select id="filter-prod" onchange="renderProductos()">
+          <option value="">Todos los estados</option>
+          <option value="crecimiento">Crecimiento</option>
+          <option value="madurez">Madurez</option>
+          <option value="declive">Declive</option>
+          <option value="dormido">Dormido</option>
+          <option value="obsoleto">Obsoleto</option>
+        </select>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;">
         <table>
-          <thead>
-            <tr>
-              <th>Producto / variante</th>
-              <th>Última venta</th>
-              <th>Ventas 30d</th>
-              <th>Vida útil est.</th>
-              <th>Stock</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody id="tabla-body"></tbody>
+          <thead><tr>
+            <th onclick="sortTable('productos','name')">Producto ↕</th>
+            <th onclick="sortTable('productos','lastSale')">Última venta ↕</th>
+            <th onclick="sortTable('productos','sales30')">Ventas 30d ↕</th>
+            <th onclick="sortTable('productos','sales90')">Ventas 90d ↕</th>
+            <th onclick="sortTable('productos','lifespan')">Vida útil est. ↕</th>
+            <th onclick="sortTable('productos','stock')">Stock ↕</th>
+            <th>Estado</th>
+          </tr></thead>
+          <tbody id="tbody-productos"></tbody>
         </table>
       </div>
+      <div class="pagination" id="pag-productos"></div>
+    </div>
+
+    <div id="tab-variantes" class="section">
+      <div class="toolbar">
+        <input type="text" id="search-var" placeholder="Buscar variante..." oninput="renderVariantes()">
+        <select id="filter-var" onchange="renderVariantes()">
+          <option value="">Todos los estados</option>
+          <option value="crecimiento">Crecimiento</option>
+          <option value="madurez">Madurez</option>
+          <option value="declive">Declive</option>
+          <option value="dormido">Dormido</option>
+          <option value="obsoleto">Obsoleto</option>
+        </select>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table>
+          <thead><tr>
+            <th onclick="sortTable('variantes','name')">Producto ↕</th>
+            <th onclick="sortTable('variantes','size')">Variante ↕</th>
+            <th onclick="sortTable('variantes','lastSale')">Última venta ↕</th>
+            <th onclick="sortTable('variantes','sales30')">Ventas 30d ↕</th>
+            <th onclick="sortTable('variantes','lifespan')">Vida útil est. ↕</th>
+            <th onclick="sortTable('variantes','stock')">Stock ↕</th>
+            <th>Estado</th>
+          </tr></thead>
+          <tbody id="tbody-variantes"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pag-variantes"></div>
     </div>
 
     <div id="tab-ranking" class="section">
@@ -133,7 +175,7 @@
     <div id="tab-curva" class="section">
       <div class="card">
         <div class="legend" id="curva-legend"></div>
-        <div class="chart-wrap" style="height: 300px;"><canvas id="curvaChart"></canvas></div>
+        <div class="chart-wrap" style="height:300px;"><canvas id="curvaChart"></canvas></div>
       </div>
     </div>
 
@@ -143,10 +185,9 @@
           <span><span class="legend-dot" style="background:#85B7EB"></span>Stock actual</span>
           <span><span class="legend-dot" style="background:#1D9E75"></span>Demanda 30d</span>
         </div>
-        <div class="chart-wrap" style="height: 320px;"><canvas id="stockChart"></canvas></div>
+        <div class="chart-wrap" style="height:340px;"><canvas id="stockChart"></canvas></div>
       </div>
     </div>
-
   </div>
 </div>
 
@@ -154,6 +195,11 @@
 const PROXY = 'https://gestion-nube-proxy.vercel.app/api/proxy';
 const API_BASE = 'https://www.gestionnube.com/api/v1';
 const TODAY = new Date('2026-04-04');
+const STORAGE_KEY = 'gn_monitor_v1';
+let allProductos = [], allVariantes = [];
+let sortState = { productos: { col: 'sales30', dir: -1 }, variantes: { col: 'sales30', dir: -1 } };
+let pageState = { productos: 1, variantes: 1 };
+const PAGE_SIZE = 50;
 let rankChart = null, cChart = null, sChart = null;
 
 function setStatus(msg, type) {
@@ -162,57 +208,137 @@ function setStatus(msg, type) {
   el.className = type || '';
 }
 
+function setProgress(pct) {
+  const bar = document.getElementById('progress-bar');
+  const fill = document.getElementById('progress-fill');
+  bar.style.display = pct > 0 && pct < 100 ? 'block' : 'none';
+  fill.style.width = pct + '%';
+}
+
 async function apiFetch(path, apiKey) {
   const res = await fetch(PROXY + '?path=' + encodeURIComponent(path), {
-    method: 'GET',
-    headers: {
-      'Authorization': 'Bearer ' + apiKey,
-      'x-api-base': API_BASE
-    }
+    headers: { 'Authorization': 'Bearer ' + apiKey, 'x-api-base': API_BASE }
   });
   const text = await res.text();
   let data;
-  try { data = JSON.parse(text); } catch(e) { throw new Error('Respuesta inesperada del servidor'); }
+  try { data = JSON.parse(text); } catch(e) { throw new Error('Respuesta inesperada'); }
   if (!res.ok) throw new Error(data.message || data.error || 'Error ' + res.status);
   return data;
 }
 
-async function connectAPI() {
-  const key = document.getElementById('api-key').value.trim();
+function getKey() { return document.getElementById('api-key').value.trim(); }
+
+async function iniciarCarga() {
+  const key = getKey();
   if (!key) { setStatus('Ingresá tu API Key.', 'error'); return; }
-  setStatus('Conectando con Gestión Nube...');
+  const cached = loadCache();
+  if (cached) {
+    setStatus('Usando datos guardados. Podés hacer clic en "Actualizar datos" para sincronizar.', 'ok');
+    procesarYRenderizar(cached.productos, cached.ventas, cached.inventario, cached.lastSync);
+    return;
+  }
+  await cargarTodo(key);
+}
+
+async function cargarTodo(key) {
+  if (!key) key = getKey();
+  if (!key) { setStatus('Ingresá tu API Key.', 'error'); return; }
   try {
+    setProgress(2);
+    setStatus('Cargando productos...');
     const prodData = await apiFetch('productos/obtener?per_page=200', key);
-    const productos = prodData.data || (Array.isArray(prodData) ? prodData : []);
+    const productos = prodData.data || [];
+    setProgress(5);
+
     setStatus('Cargando inventario...');
     let inventario = [];
     let invPage = 1;
-    while (invPage <= 20) {
-      const invData = await apiFetch(`inventario/obtener?per_page=200&page=${invPage}`, key);
-      const items = invData.data || [];
-      inventario = inventario.concat(items);
-      setStatus(`Cargando inventario... ${inventario.length} de ${invData.meta?.total || '?'}`);
-      if (!invData.meta?.has_more_pages || items.length === 0) break;
+    let invTotal = 1;
+    while (true) {
+      const d = await apiFetch(`inventario/obtener?per_page=200&page=${invPage}`, key);
+      inventario = inventario.concat(d.data || []);
+      invTotal = d.meta?.total || inventario.length;
+      setStatus(`Cargando inventario... ${inventario.length} de ${invTotal}`);
+      setProgress(5 + Math.round((inventario.length / invTotal) * 30));
+      if (!d.meta?.has_more_pages || (d.data || []).length === 0) break;
       invPage++;
     }
-    setStatus('Cargando ventas desde enero 2025...');
+
+    setStatus('Cargando ventas...');
     let ventas = [];
-    let page = 1;
-    while (page <= 10) {
-      const vData = await apiFetch(`ventas/obtener?from=2025-01-01&to=2026-04-04&include_details=1&per_page=200&page=${page}`, key);
-      const items = vData.data || [];
-      ventas = ventas.concat(items);
-      setStatus(`Cargando ventas... ${ventas.length} de ${vData.meta?.total || '?'}`);
-      if (!vData.meta?.has_more_pages || items.length === 0) break;
-      page++;
+    let vPage = 1;
+    let vTotal = 1;
+    while (true) {
+      const d = await apiFetch(`ventas/obtener?from=2025-01-01&to=2026-04-04&include_details=1&per_page=200&page=${vPage}`, key);
+      ventas = ventas.concat(d.data || []);
+      vTotal = d.meta?.total || ventas.length;
+      setStatus(`Cargando ventas... ${ventas.length} de ${vTotal}`);
+      setProgress(35 + Math.round((ventas.length / vTotal) * 60));
+      if (!d.meta?.has_more_pages || (d.data || []).length === 0) break;
+      vPage++;
     }
-    setStatus('Procesando datos...');
-    const processed = processData(productos, ventas, inventario);
-    renderDashboard(processed);
-    setStatus('Datos cargados correctamente.', 'ok');
+
+    const lastSync = new Date().toISOString();
+    saveCache({ productos, inventario, ventas, lastSync });
+    setProgress(100);
+    procesarYRenderizar(productos, ventas, inventario, lastSync);
   } catch(e) {
+    setProgress(0);
     setStatus('Error: ' + e.message, 'error');
   }
+}
+
+async function sincronizar() {
+  const key = getKey();
+  if (!key) { setStatus('Ingresá tu API Key para sincronizar.', 'error'); return; }
+  const cached = loadCache();
+  if (!cached) { await cargarTodo(key); return; }
+  try {
+    setStatus('Sincronizando ventas nuevas...');
+    const lastDate = cached.lastSync ? cached.lastSync.substring(0, 10) : '2026-01-01';
+    let nuevas = [];
+    let page = 1;
+    while (true) {
+      const d = await apiFetch(`ventas/obtener?from=${lastDate}&to=2026-04-04&include_details=1&per_page=200&page=${page}`, key);
+      nuevas = nuevas.concat(d.data || []);
+      setStatus(`Sincronizando... ${nuevas.length} ventas nuevas`);
+      if (!d.meta?.has_more_pages || (d.data || []).length === 0) break;
+      page++;
+    }
+    const idsExistentes = new Set(cached.ventas.map(v => v.id));
+    const ventasNuevas = nuevas.filter(v => !idsExistentes.has(v.id));
+    const ventasActualizadas = [...cached.ventas, ...ventasNuevas];
+    const lastSync = new Date().toISOString();
+    const newCache = { ...cached, ventas: ventasActualizadas, lastSync };
+    saveCache(newCache);
+    procesarYRenderizar(cached.productos, ventasActualizadas, cached.inventario, lastSync);
+    setStatus(`Sincronizado. ${ventasNuevas.length} ventas nuevas agregadas.`, 'ok');
+  } catch(e) {
+    setStatus('Error al sincronizar: ' + e.message, 'error');
+  }
+}
+
+function saveCache(data) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch(e) {
+    console.warn('No se pudo guardar en localStorage:', e);
+  }
+}
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function borrarDatos() {
+  if (!confirm('¿Borrar todos los datos guardados? Vas a tener que volver a cargar todo.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  setStatus('Datos borrados.', 'ok');
+  document.getElementById('sync-info').textContent = '';
+  document.getElementById('dashboard').style.display = 'none';
 }
 
 function daysSince(dateStr) {
@@ -220,12 +346,17 @@ function daysSince(dateStr) {
   return Math.round((TODAY - new Date(dateStr)) / 86400000);
 }
 
-function lifespanEstimate(stock, sales30) {
-  if (!sales30 || sales30 <= 0) return stock > 0 ? 'Sin movimiento' : '—';
-  const days = Math.round((stock / sales30) * 30);
-  if (days > 365) return '+1 año';
-  if (days > 60) return Math.round(days / 30) + ' meses';
-  return days + ' días';
+function lifespanDays(stock, sales30) {
+  if (!sales30 || sales30 <= 0) return null;
+  return Math.round((stock / sales30) * 30);
+}
+
+function lifespanStr(stock, sales30) {
+  const d = lifespanDays(stock, sales30);
+  if (d === null) return stock > 0 ? 'Sin movimiento' : '—';
+  if (d > 365) return '+1 año';
+  if (d > 60) return Math.round(d / 30) + ' meses';
+  return d + ' días';
 }
 
 function getPhase(salesPrev, salesCurr, dsl) {
@@ -237,100 +368,233 @@ function getPhase(salesPrev, salesCurr, dsl) {
   return { label: 'declive', cls: 'badge-warning' };
 }
 
-function processData(productos, ventas, inventario) {
-  const invMap = {};
+function procesarYRenderizar(productos, ventas, inventario, lastSync) {
+  // Mapa de inventario por product_id (suma de todos los talles/depósitos)
+  const invByProduct = {};
+  const invByVariant = {}; // key: product_id + '_' + size_id
   (inventario || []).forEach(i => {
-    const pid = String(i.product_id || i.id);
-    const qty = i.available_quantity || i.stock || i.quantity || 0;
-    invMap[pid] = (invMap[pid] || 0) + qty;
+    const pid = String(i.product_id);
+    const vid = pid + '_' + String(i.size_id);
+    const qty = i.available_quantity || 0;
+    invByProduct[pid] = (invByProduct[pid] || 0) + qty;
+    invByVariant[vid] = (invByVariant[vid] || 0) + qty;
   });
-  const vp = {};
-  (ventas || []).forEach(v => {
-    const items = v.detalles || v.items || v.detalle || [];
-    const fechaFull = (v.date_sale || v.fecha || v.created_at || '').substring(0, 10);
-    const fechaMes = fechaFull.substring(0, 7);
-    items.forEach(item => {
-      const pid = String(item.product_id || '');
-      const qty = item.quantity || 1;
-      if (!pid) return;
-      if (!vp[pid]) vp[pid] = { total: 0, byMonth: {}, last: null, name: item.product_name || '', size: item.size || '' };
-      vp[pid].total += qty;
-      vp[pid].byMonth[fechaMes] = (vp[pid].byMonth[fechaMes] || 0) + qty;
-      if (!vp[pid].last || fechaFull > vp[pid].last) vp[pid].last = fechaFull;
-    });
-  });
-  const months = [];
-  for (let m = 0; m <= TODAY.getMonth(); m++) months.push('2025-' + String(m + 1).padStart(2, '0'));
+
+  // Procesar ventas por producto y por variante
+  const vprod = {}; // por product_id
+  const vvar = {};  // por product_id + '_' + size_id
   const cutoff30 = new Date(TODAY); cutoff30.setDate(cutoff30.getDate() - 30);
   const cutoff60 = new Date(TODAY); cutoff60.setDate(cutoff60.getDate() - 60);
-  return (productos || []).slice(0, 100).map(p => {
-    const pid = String(p.id || '');
-    const data = vp[pid] || { total: 0, byMonth: {}, last: null };
-    const lastDate = data.last || null;
-    const dsl = lastDate ? daysSince(lastDate) : 999;
-    const s30 = Object.entries(data.byMonth).filter(([m]) => new Date(m+'-01') >= cutoff30).reduce((a,[,v])=>a+v,0);
-    const s60 = Object.entries(data.byMonth).filter(([m]) => { const d = new Date(m+'-01'); return d >= cutoff60 && d < cutoff30; }).reduce((a,[,v])=>a+v,0);
-    const stock = invMap[pid] || p.stock || 0;
-    const variants = (p.variants || p.variantes || p.sizes || []).map(v => v.name || v.nombre || v.size || v.talle || '').filter(Boolean).join(', ') || 'única';
-    return { id: pid, name: p.name || p.nombre || 'Producto ' + pid, variant: variants, lastSale: lastDate || 'Sin ventas', daysSinceLast: dsl, sales30: s30, sales60: s60, totalSales: data.total, monthlySales: months.map(m => data.byMonth[m] || 0), stock, phase: getPhase(s60, s30, dsl) };
+  const cutoff90 = new Date(TODAY); cutoff90.setDate(cutoff90.getDate() - 90);
+
+  const months = [];
+  for (let m = 0; m <= 11; m++) months.push('2025-' + String(m + 1).padStart(2, '0'));
+  months.push('2026-01', '2026-02', '2026-03', '2026-04');
+
+  (ventas || []).forEach(v => {
+    const fecha = (v.date_sale || v.fecha || '').substring(0, 10);
+    const fechaMes = fecha.substring(0, 7);
+    const fechaObj = new Date(fecha);
+    (v.detalles || []).forEach(item => {
+      const pid = String(item.product_id || '');
+      const sid = String(item.size_id || '');
+      const vid = pid + '_' + sid;
+      const qty = item.quantity || 1;
+      const name = item.product_name || '';
+      const size = item.size || '';
+
+      // Por producto
+      if (!vprod[pid]) vprod[pid] = { total: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null, name };
+      vprod[pid].total += qty;
+      vprod[pid].byMonth[fechaMes] = (vprod[pid].byMonth[fechaMes] || 0) + qty;
+      if (fechaObj >= cutoff30) vprod[pid].s30 += qty;
+      else if (fechaObj >= cutoff60) vprod[pid].s60 += qty;
+      if (fechaObj >= cutoff90) vprod[pid].s90 += qty;
+      if (!vprod[pid].last || fecha > vprod[pid].last) vprod[pid].last = fecha;
+
+      // Por variante
+      if (!vvar[vid]) vvar[vid] = { total: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null, name, size, pid, sid };
+      vvar[vid].total += qty;
+      vvar[vid].byMonth[fechaMes] = (vvar[vid].byMonth[fechaMes] || 0) + qty;
+      if (fechaObj >= cutoff30) vvar[vid].s30 += qty;
+      else if (fechaObj >= cutoff60) vvar[vid].s60 += qty;
+      if (!vvar[vid].last || fecha > vvar[vid].last) vvar[vid].last = fecha;
+    });
+  });
+
+  // Construir lista de productos
+  allProductos = (productos || []).map(p => {
+    const pid = String(p.id);
+    const d = vprod[pid] || { total: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null };
+    const dsl = d.last ? daysSince(d.last) : 999;
+    const stock = invByProduct[pid] || 0;
+    const ls = lifespanDays(stock, d.s30);
+    return {
+      id: pid, name: p.name || p.nombre || 'Producto ' + pid,
+      lastSale: d.last || null, daysSinceLast: dsl,
+      sales30: d.s30, sales60: d.s60, sales90: d.s90, totalSales: d.total,
+      monthlySales: months.map(m => d.byMonth[m] || 0),
+      stock, lifespan: ls === null ? 99999 : ls,
+      phase: getPhase(d.s60, d.s30, dsl)
+    };
+  });
+
+  // Construir lista de variantes desde el inventario
+  const variantesMap = {};
+  (inventario || []).forEach(i => {
+    const pid = String(i.product_id);
+    const sid = String(i.size_id);
+    const vid = pid + '_' + sid;
+    if (!variantesMap[vid]) {
+      variantesMap[vid] = { id: vid, pid, sid, name: i.product_name || '', size: i.size_name || '', stock: 0 };
+    }
+    variantesMap[vid].stock += (i.available_quantity || 0);
+  });
+
+  allVariantes = Object.values(variantesMap).map(v => {
+    const d = vvar[v.id] || { total: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null };
+    const dsl = d.last ? daysSince(d.last) : 999;
+    const ls = lifespanDays(v.stock, d.s30);
+    return {
+      ...v, lastSale: d.last || null, daysSinceLast: dsl,
+      sales30: d.s30, sales60: d.s60, sales90: d.s90, totalSales: d.total,
+      lifespan: ls === null ? 99999 : ls,
+      phase: getPhase(d.s60, d.s30, dsl)
+    };
+  });
+
+  // Stats
+  document.getElementById('stat-total').textContent = allProductos.length;
+  document.getElementById('stat-stale').textContent = allProductos.filter(p => p.daysSinceLast > 30).length;
+  document.getElementById('stat-decline').textContent = allProductos.filter(p => p.phase.label === 'declive').length;
+  document.getElementById('stat-growth').textContent = allProductos.filter(p => p.phase.label === 'crecimiento').length;
+  document.getElementById('stat-variants').textContent = allVariantes.length;
+
+  if (lastSync) {
+    const d = new Date(lastSync);
+    document.getElementById('sync-info').textContent = 'Última sincronización: ' + d.toLocaleDateString('es-AR') + ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) + ' — ' + ventas.length + ' ventas cargadas';
+  }
+
+  document.getElementById('dashboard').style.display = 'block';
+  setProgress(0);
+  renderProductos();
+  renderVariantes();
+  renderRanking();
+  renderCurva();
+  renderStock();
+}
+
+function filtrarLista(lista, searchId, filterId) {
+  const q = document.getElementById(searchId)?.value?.toLowerCase() || '';
+  const f = document.getElementById(filterId)?.value || '';
+  return lista.filter(p => {
+    const matchQ = !q || (p.name || '').toLowerCase().includes(q) || (p.size || '').toLowerCase().includes(q);
+    const matchF = !f || p.phase.label === f;
+    return matchQ && matchF;
   });
 }
 
-function renderDashboard(products) {
-  document.getElementById('stat-total').textContent = products.length;
-  document.getElementById('stat-stale').textContent = products.filter(p => p.daysSinceLast > 30).length;
-  document.getElementById('stat-decline').textContent = products.filter(p => p.phase.label === 'declive').length;
-  document.getElementById('stat-growth').textContent = products.filter(p => p.phase.label === 'crecimiento').length;
-  document.getElementById('dashboard').style.display = 'block';
-  renderTabla(products);
-  renderRanking(products);
-  renderCurva(products);
-  renderStock(products);
+function sortList(lista, col, dir) {
+  return [...lista].sort((a, b) => {
+    let va = a[col], vb = b[col];
+    if (typeof va === 'string') return dir * va.localeCompare(vb);
+    return dir * ((va || 0) - (vb || 0));
+  });
 }
 
-function renderTabla(products) {
-  document.getElementById('tabla-body').innerHTML = [...products].sort((a,b) => b.daysSinceLast - a.daysSinceLast).map(p => `
+function sortTable(type, col) {
+  if (sortState[type].col === col) sortState[type].dir *= -1;
+  else { sortState[type].col = col; sortState[type].dir = -1; }
+  pageState[type] = 1;
+  if (type === 'productos') renderProductos();
+  else renderVariantes();
+}
+
+function renderPagination(total, current, type) {
+  const pages = Math.ceil(total / PAGE_SIZE);
+  const el = document.getElementById('pag-' + type);
+  if (pages <= 1) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <button onclick="goPage('${type}',${current-1})" ${current===1?'disabled':''}>←</button>
+    <span>Página ${current} de ${pages} (${total} registros)</span>
+    <button onclick="goPage('${type}',${current+1})" ${current===pages?'disabled':''}>→</button>`;
+}
+
+function goPage(type, page) {
+  pageState[type] = page;
+  if (type === 'productos') renderProductos();
+  else renderVariantes();
+}
+
+function renderProductos() {
+  const { col, dir } = sortState.productos;
+  let lista = filtrarLista(allProductos, 'search-prod', 'filter-prod');
+  lista = sortList(lista, col, dir);
+  const page = pageState.productos;
+  const slice = lista.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
+  renderPagination(lista.length, page, 'productos');
+  document.getElementById('tbody-productos').innerHTML = slice.map(p => `
     <tr>
-      <td><div style="font-weight:500;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</div><div style="font-size:11px;color:#aaa;">${p.variant}</div></td>
-      <td>${p.lastSale}<div style="font-size:11px;color:#aaa;">${p.daysSinceLast}d atrás</div></td>
+      <td style="font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</td>
+      <td style="color:#666;">${p.lastSale || '<span style="color:#aaa;">Sin ventas</span>'}<br><span style="font-size:11px;color:#aaa;">${p.daysSinceLast < 999 ? p.daysSinceLast+'d atrás' : ''}</span></td>
       <td style="font-weight:500;">${p.sales30}</td>
-      <td style="color:#666;">${lifespanEstimate(p.stock, p.sales30)}</td>
-      <td>${p.stock}<div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.min(100,p.stock/2)}%;background:${p.stock<10?'#e24b4a':'#1d9e75'};"></div></div></td>
+      <td>${p.sales90}</td>
+      <td style="color:#666;font-size:12px;">${lifespanStr(p.stock, p.sales30)}</td>
+      <td>${p.stock}<div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.min(100,p.stock/2)}%;background:${p.stock<5?'#e24b4a':p.stock<20?'#ef9f27':'#1d9e75'};"></div></div></td>
       <td><span class="badge ${p.phase.cls}">${p.phase.label}</span></td>
     </tr>`).join('');
 }
 
-function renderRanking(products) {
-  const top = [...products].sort((a,b) => b.sales30 - a.sales30).slice(0,12);
+function renderVariantes() {
+  const { col, dir } = sortState.variantes;
+  let lista = filtrarLista(allVariantes, 'search-var', 'filter-var');
+  lista = sortList(lista, col, dir);
+  const page = pageState.variantes;
+  const slice = lista.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
+  renderPagination(lista.length, page, 'variantes');
+  document.getElementById('tbody-variantes').innerHTML = slice.map(v => `
+    <tr>
+      <td style="font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${v.name}</td>
+      <td style="color:#666;font-size:12px;">${v.size}</td>
+      <td style="color:#666;">${v.lastSale || '<span style="color:#aaa;">Sin ventas</span>'}<br><span style="font-size:11px;color:#aaa;">${v.daysSinceLast < 999 ? v.daysSinceLast+'d atrás' : ''}</span></td>
+      <td style="font-weight:500;">${v.sales30}</td>
+      <td style="color:#666;font-size:12px;">${lifespanStr(v.stock, v.sales30)}</td>
+      <td>${v.stock}<div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.min(100,v.stock/2)}%;background:${v.stock<5?'#e24b4a':v.stock<20?'#ef9f27':'#1d9e75'};"></div></div></td>
+      <td><span class="badge ${v.phase.cls}">${v.phase.label}</span></td>
+    </tr>`).join('');
+}
+
+function renderRanking() {
+  const top = [...allProductos].sort((a,b) => b.sales30 - a.sales30).slice(0,15);
   const wrap = document.getElementById('ranking-wrap');
-  wrap.style.height = Math.max(300, top.length * 42 + 60) + 'px';
+  wrap.style.height = Math.max(300, top.length * 40 + 60) + 'px';
   if (rankChart) rankChart.destroy();
   rankChart = new Chart(document.getElementById('rankingChart'), {
     type: 'bar',
-    data: { labels: top.map(p => p.name.length>24?p.name.slice(0,24)+'…':p.name), datasets: [{ data: top.map(p=>p.sales30), backgroundColor: top.map(p=>p.phase.label==='crecimiento'?'#1D9E75':p.phase.label==='declive'?'#EF9F27':'#378ADD'), borderRadius: 4 }] },
+    data: { labels: top.map(p => p.name.length>26?p.name.slice(0,26)+'…':p.name), datasets: [{ data: top.map(p=>p.sales30), backgroundColor: top.map(p=>p.phase.label==='crecimiento'?'#1D9E75':p.phase.label==='declive'?'#EF9F27':p.phase.label==='obsoleto'||p.phase.label==='dormido'?'#E24B4A':'#378ADD'), borderRadius: 4 }] },
     options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888', font: { size: 11 } }, grid: { color: '#f0f0f0' } }, y: { ticks: { color: '#444', font: { size: 12 } }, grid: { display: false } } } }
   });
 }
 
-function renderCurva(products) {
-  const labels = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'].slice(0,TODAY.getMonth()+1);
-  const top5 = [...products].sort((a,b)=>b.totalSales-a.totalSales).slice(0,5);
+function renderCurva() {
+  const allMonths = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic','Ene','Feb','Mar','Abr'];
+  const top5 = [...allProductos].sort((a,b)=>b.totalSales-a.totalSales).slice(0,5);
   const colors = ['#378ADD','#1D9E75','#D85A30','#7F77DD','#BA7517'];
   document.getElementById('curva-legend').innerHTML = top5.map((p,i) => `<span><span class="legend-dot" style="background:${colors[i]};"></span>${p.name}</span>`).join('');
   if (cChart) cChart.destroy();
   cChart = new Chart(document.getElementById('curvaChart'), {
     type: 'line',
-    data: { labels, datasets: top5.map((p,i) => ({ label: p.name, data: p.monthlySales, borderColor: colors[i], backgroundColor: 'transparent', tension: 0.35, pointRadius: 3, borderWidth: 2 })) },
+    data: { labels: allMonths, datasets: top5.map((p,i) => ({ label: p.name, data: p.monthlySales, borderColor: colors[i], backgroundColor: 'transparent', tension: 0.35, pointRadius: 2, borderWidth: 2 })) },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888', font: { size: 11 } }, grid: { color: '#f0f0f0' } }, y: { ticks: { color: '#888', font: { size: 11 } }, grid: { color: '#f0f0f0' } } } }
   });
 }
 
-function renderStock(products) {
-  const sorted = [...products].sort((a,b)=>b.stock-a.stock).slice(0,12);
+function renderStock() {
+  const sorted = [...allProductos].filter(p=>p.stock>0||p.sales30>0).sort((a,b)=>b.stock-a.stock).slice(0,15);
   if (sChart) sChart.destroy();
   sChart = new Chart(document.getElementById('stockChart'), {
     type: 'bar',
-    data: { labels: sorted.map(p=>p.name.length>18?p.name.slice(0,18)+'…':p.name), datasets: [{ label: 'Stock actual', data: sorted.map(p=>p.stock), backgroundColor: '#85B7EB', borderRadius: 3 },{ label: 'Demanda 30d', data: sorted.map(p=>p.sales30), backgroundColor: '#1D9E75', borderRadius: 3 }] },
+    data: { labels: sorted.map(p=>p.name.length>20?p.name.slice(0,20)+'…':p.name), datasets: [{ label: 'Stock actual', data: sorted.map(p=>p.stock), backgroundColor: '#85B7EB', borderRadius: 3 },{ label: 'Demanda 30d', data: sorted.map(p=>p.sales30), backgroundColor: '#1D9E75', borderRadius: 3 }] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888', font: { size: 11 }, maxRotation: 40, autoSkip: false }, grid: { display: false } }, y: { ticks: { color: '#888', font: { size: 11 } }, grid: { color: '#f0f0f0' } } } }
   });
 }
@@ -342,22 +606,13 @@ function switchTab(id, btn) {
   btn.classList.add('active');
 }
 
-function loadDemo() {
-  const names = ['Remera básica blanca','Pantalón chino','Buzo con capucha','Vestido floral','Camisa oxford','Short deportivo','Campera de abrigo','Zapatillas urbanas','Medias pack x3','Cinturón cuero'];
-  const variants = ['Talle S','Talle M','Talle L','Color azul','Color negro','Única','38','40','42'];
-  const months = [];
-  for (let m = 0; m <= TODAY.getMonth(); m++) months.push('2025-' + String(m+1).padStart(2,'0'));
-  const products = names.map((name, i) => {
-    const peak = 2 + Math.floor(Math.random()*6);
-    const monthlySales = months.map((_,mi) => Math.round((5+Math.random()*40)*Math.exp(-Math.pow(mi-peak,2)/8)));
-    const s30 = monthlySales[monthlySales.length-1]||0, s60 = monthlySales[monthlySales.length-2]||0;
-    const daysAgo = i<2?3+Math.floor(Math.random()*10):i<6?10+Math.floor(Math.random()*25):35+Math.floor(Math.random()*60);
-    const lastDate = new Date(TODAY); lastDate.setDate(lastDate.getDate()-daysAgo);
-    return { id: i+1, name, variant: variants[i%variants.length], lastSale: lastDate.toISOString().substring(0,10), daysSinceLast: daysAgo, sales30: s30, sales60: s60, totalSales: monthlySales.reduce((a,b)=>a+b,0), monthlySales, stock: Math.floor(Math.random()*80)+2, phase: getPhase(s60,s30,daysAgo) };
-  });
-  renderDashboard(products);
-  setStatus('Modo demo — datos de ejemplo.', 'ok');
-}
+// Al cargar la página, intentar usar caché existente
+window.onload = function() {
+  const cached = loadCache();
+  if (cached) {
+    document.getElementById('sync-info').textContent = 'Datos guardados encontrados. Ingresá tu API Key y hacé clic en "Conectar y analizar" para cargarlos, o en "Actualizar datos" para sincronizar.';
+  }
+};
 </script>
 </body>
 </html>
