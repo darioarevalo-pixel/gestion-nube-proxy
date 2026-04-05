@@ -19,7 +19,6 @@
     .btn-primary { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
     .btn-primary:hover { background: #333; }
     .btn-sm { font-size: 12px; padding: 5px 12px; color: #666; }
-    .btn-danger { font-size: 12px; padding: 5px 12px; color: #a32d2d; border-color: #f7c1c1; }
     #status { font-size: 12px; color: #888; margin-top: 8px; min-height: 18px; }
     #status.error { color: #e24b4a; }
     #status.ok { color: #1d9e75; }
@@ -76,10 +75,7 @@
 
   <div class="card">
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-      <input type="password" id="api-key" placeholder="Tu API Key de Gestión Nube" style="flex:1;min-width:200px;">
-      <button class="btn-primary" onclick="iniciarCarga()">Conectar y analizar</button>
-      <button class="btn-sm" onclick="sincronizar()">Actualizar datos</button>
-      <button class="btn-danger" onclick="borrarDatos()">Borrar caché</button>
+      <button class="btn-primary" onclick="cargarTodo()">Actualizar datos</button>
     </div>
     <div class="progress-bar" id="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
     <div id="status"></div>
@@ -192,10 +188,9 @@
 </div>
 
 <script>
-const PROXY = 'https://gestion-nube-proxy.vercel.app/api/proxy';
-const API_BASE = 'https://www.gestionnube.com/api/v1';
-const TODAY = new Date('2026-04-04');
-const STORAGE_KEY = 'gn_monitor_v1';
+const SUPABASE_URL = 'https://srqzzffmiiescffabtlc.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNycXp6ZmZtaWllc2NmZmFidGxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNzg1NDksImV4cCI6MjA5MDk1NDU0OX0.UJGWTPCXhhxv2Q-4twUBvOivPLUk0SSQvyvtEkDmWLg';
+const TODAY = new Date();
 let allProductos = [], allVariantes = [];
 let sortState = { productos: { col: 'sales30', dir: -1 }, variantes: { col: 'sales30', dir: -1 } };
 let pageState = { productos: 1, variantes: 1 };
@@ -215,142 +210,62 @@ function setProgress(pct) {
   fill.style.width = pct + '%';
 }
 
-async function apiFetch(path, apiKey) {
-  const res = await fetch(PROXY + '?path=' + encodeURIComponent(path), {
-    headers: { 'Authorization': 'Bearer ' + apiKey, 'x-api-base': API_BASE }
+async function sbFetch(table, params) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
   });
-  const text = await res.text();
-  let data;
-  try { data = JSON.parse(text); } catch(e) { throw new Error('Respuesta inesperada'); }
-  if (!res.ok) throw new Error(data.message || data.error || 'Error ' + res.status);
-  return data;
-}
-
-async function apiFetchConReintentos(path, apiKey, reintentos = 3, espera = 2000) {
-  for (let intento = 1; intento <= reintentos; intento++) {
-    try {
-      return await apiFetch(path, apiKey);
-    } catch(e) {
-      if (intento === reintentos) throw e;
-      setStatus(`Error en página, reintentando (${intento}/${reintentos - 1})...`, 'error');
-      await new Promise(r => setTimeout(r, espera));
-    }
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Error ${res.status} en ${table}: ${text.substring(0, 150)}`);
   }
+  return res.json();
 }
 
-function getKey() { return document.getElementById('api-key').value.trim(); }
-
-async function iniciarCarga() {
-  const key = getKey();
-  if (!key) { setStatus('Ingresá tu API Key.', 'error'); return; }
-  const cached = loadCache();
-  if (cached) {
-    setStatus('Usando datos guardados. Podés hacer clic en "Actualizar datos" para sincronizar.', 'ok');
-    procesarYRenderizar(cached.productos, cached.ventas, cached.inventario, cached.lastSync);
-    return;
+async function fetchAll(table, baseParams, label) {
+  const results = [];
+  let offset = 0;
+  const batchSize = 1000;
+  while (true) {
+    const data = await sbFetch(table, `${baseParams}&limit=${batchSize}&offset=${offset}`);
+    results.push(...data);
+    setStatus(`Cargando ${label}... ${results.length}`);
+    if (data.length < batchSize) break;
+    offset += batchSize;
   }
-  await cargarTodo(key);
+  return results;
 }
 
-async function cargarTodo(key) {
-  if (!key) key = getKey();
-  if (!key) { setStatus('Ingresá tu API Key.', 'error'); return; }
+async function cargarTodo() {
   try {
-    setProgress(2);
-    setStatus('Cargando productos...');
-    const prodData = await apiFetch('productos/obtener?per_page=200', key);
-    const productos = prodData.data || [];
     setProgress(5);
+    setStatus('Cargando productos...');
+    const productos = await sbFetch('productos', 'select=id,name&order=id&limit=1000');
+    setProgress(15);
 
     setStatus('Cargando inventario...');
-    let inventario = [];
-    let invPage = 1;
-    let invTotal = 1;
-    while (true) {
-      const d = await apiFetch(`inventario/obtener?per_page=50&page=${invPage}`, key);
-      inventario = inventario.concat(d.data || []);
-      invTotal = d.meta?.total || inventario.length;
-      setStatus(`Cargando inventario... ${inventario.length} de ${invTotal}`);
-      setProgress(5 + Math.round((inventario.length / invTotal) * 30));
-      if (!d.meta?.has_more_pages || (d.data || []).length === 0) break;
-      invPage++;
-    }
+    const inventario = await fetchAll(
+      'inventario',
+      'select=product_id,product_name,size_id,size_name,available_quantity&order=product_id',
+      'inventario'
+    );
+    setProgress(40);
 
     setStatus('Cargando ventas...');
-    let ventas = [];
-    let vPage = 1;
-    let vTotal = 1;
-    while (true) {
-      const d = await apiFetchConReintentos(`ventas/obtener?from=2025-01-01&to=2026-04-04&include_details=1&per_page=50&page=${vPage}`, key);
-      ventas = ventas.concat(d.data || []);
-      vTotal = d.meta?.total || ventas.length;
-      setStatus(`Cargando ventas... ${ventas.length} de ${vTotal}`);
-      setProgress(35 + Math.round((ventas.length / vTotal) * 60));
-      if (!d.meta?.has_more_pages || (d.data || []).length === 0) break;
-      vPage++;
-    }
+    const ventas = await fetchAll(
+      'ventas',
+      'select=id,date_sale,venta_detalles(product_id,product_name,size_id,size,quantity)&date_sale=gte.2025-01-01&order=id',
+      'ventas'
+    );
+    setProgress(95);
 
     const lastSync = new Date().toISOString();
-    saveCache({ productos, inventario, ventas, lastSync });
-    setProgress(100);
     procesarYRenderizar(productos, ventas, inventario, lastSync);
+    setProgress(100);
+    setStatus('Datos actualizados.', 'ok');
   } catch(e) {
     setProgress(0);
     setStatus('Error: ' + e.message, 'error');
   }
-}
-
-async function sincronizar() {
-  const key = getKey();
-  if (!key) { setStatus('Ingresá tu API Key para sincronizar.', 'error'); return; }
-  const cached = loadCache();
-  if (!cached) { await cargarTodo(key); return; }
-  try {
-    setStatus('Sincronizando ventas nuevas...');
-    const lastDate = cached.lastSync ? cached.lastSync.substring(0, 10) : '2026-01-01';
-    let nuevas = [];
-    let page = 1;
-    while (true) {
-      const d = await apiFetchConReintentos(`ventas/obtener?from=${lastDate}&to=2026-04-04&include_details=1&per_page=50&page=${page}`, key);
-      nuevas = nuevas.concat(d.data || []);
-      setStatus(`Sincronizando... ${nuevas.length} ventas nuevas`);
-      if (!d.meta?.has_more_pages || (d.data || []).length === 0) break;
-      page++;
-    }
-    const idsExistentes = new Set(cached.ventas.map(v => v.id));
-    const ventasNuevas = nuevas.filter(v => !idsExistentes.has(v.id));
-    const ventasActualizadas = [...cached.ventas, ...ventasNuevas];
-    const lastSync = new Date().toISOString();
-    const newCache = { ...cached, ventas: ventasActualizadas, lastSync };
-    saveCache(newCache);
-    procesarYRenderizar(cached.productos, ventasActualizadas, cached.inventario, lastSync);
-    setStatus(`Sincronizado. ${ventasNuevas.length} ventas nuevas agregadas.`, 'ok');
-  } catch(e) {
-    setStatus('Error al sincronizar: ' + e.message, 'error');
-  }
-}
-
-function saveCache(data) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch(e) {
-    console.warn('No se pudo guardar en localStorage:', e);
-  }
-}
-
-function loadCache() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch(e) { return null; }
-}
-
-function borrarDatos() {
-  if (!confirm('¿Borrar todos los datos guardados? Vas a tener que volver a cargar todo.')) return;
-  localStorage.removeItem(STORAGE_KEY);
-  setStatus('Datos borrados.', 'ok');
-  document.getElementById('sync-info').textContent = '';
-  document.getElementById('dashboard').style.display = 'none';
 }
 
 function daysSince(dateStr) {
@@ -381,9 +296,8 @@ function getPhase(salesPrev, salesCurr, dsl) {
 }
 
 function procesarYRenderizar(productos, ventas, inventario, lastSync) {
-  // Mapa de inventario por product_id (suma de todos los talles/depósitos)
   const invByProduct = {};
-  const invByVariant = {}; // key: product_id + '_' + size_id
+  const invByVariant = {};
   (inventario || []).forEach(i => {
     const pid = String(i.product_id);
     const vid = pid + '_' + String(i.size_id);
@@ -392,22 +306,25 @@ function procesarYRenderizar(productos, ventas, inventario, lastSync) {
     invByVariant[vid] = (invByVariant[vid] || 0) + qty;
   });
 
-  // Procesar ventas por producto y por variante
-  const vprod = {}; // por product_id
-  const vvar = {};  // por product_id + '_' + size_id
+  const vprod = {};
+  const vvar = {};
   const cutoff30 = new Date(TODAY); cutoff30.setDate(cutoff30.getDate() - 30);
   const cutoff60 = new Date(TODAY); cutoff60.setDate(cutoff60.getDate() - 60);
   const cutoff90 = new Date(TODAY); cutoff90.setDate(cutoff90.getDate() - 90);
 
+  // Generar los últimos 16 meses dinámicamente
   const months = [];
-  for (let m = 0; m <= 11; m++) months.push('2025-' + String(m + 1).padStart(2, '0'));
-  months.push('2026-01', '2026-02', '2026-03', '2026-04');
+  const cursorMonth = new Date(TODAY.getFullYear(), TODAY.getMonth(), 1);
+  for (let i = 15; i >= 0; i--) {
+    const d = new Date(cursorMonth.getFullYear(), cursorMonth.getMonth() - i, 1);
+    months.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+  }
 
   (ventas || []).forEach(v => {
-    const fecha = (v.date_sale || v.fecha || '').substring(0, 10);
+    const fecha = (v.date_sale || '').substring(0, 10);
     const fechaMes = fecha.substring(0, 7);
     const fechaObj = new Date(fecha);
-    (v.detalles || []).forEach(item => {
+    (v.venta_detalles || []).forEach(item => {
       const pid = String(item.product_id || '');
       const sid = String(item.size_id || '');
       const vid = pid + '_' + sid;
@@ -415,7 +332,6 @@ function procesarYRenderizar(productos, ventas, inventario, lastSync) {
       const name = item.product_name || '';
       const size = item.size || '';
 
-      // Por producto
       if (!vprod[pid]) vprod[pid] = { total: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null, name };
       vprod[pid].total += qty;
       vprod[pid].byMonth[fechaMes] = (vprod[pid].byMonth[fechaMes] || 0) + qty;
@@ -424,7 +340,6 @@ function procesarYRenderizar(productos, ventas, inventario, lastSync) {
       if (fechaObj >= cutoff90) vprod[pid].s90 += qty;
       if (!vprod[pid].last || fecha > vprod[pid].last) vprod[pid].last = fecha;
 
-      // Por variante
       if (!vvar[vid]) vvar[vid] = { total: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null, name, size, pid, sid };
       vvar[vid].total += qty;
       vvar[vid].byMonth[fechaMes] = (vvar[vid].byMonth[fechaMes] || 0) + qty;
@@ -434,7 +349,6 @@ function procesarYRenderizar(productos, ventas, inventario, lastSync) {
     });
   });
 
-  // Construir lista de productos
   allProductos = (productos || []).map(p => {
     const pid = String(p.id);
     const d = vprod[pid] || { total: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null };
@@ -442,7 +356,7 @@ function procesarYRenderizar(productos, ventas, inventario, lastSync) {
     const stock = invByProduct[pid] || 0;
     const ls = lifespanDays(stock, d.s30);
     return {
-      id: pid, name: p.name || p.nombre || 'Producto ' + pid,
+      id: pid, name: p.name || 'Producto ' + pid,
       lastSale: d.last || null, daysSinceLast: dsl,
       sales30: d.s30, sales60: d.s60, sales90: d.s90, totalSales: d.total,
       monthlySales: months.map(m => d.byMonth[m] || 0),
@@ -451,7 +365,6 @@ function procesarYRenderizar(productos, ventas, inventario, lastSync) {
     };
   });
 
-  // Construir lista de variantes desde el inventario
   const variantesMap = {};
   (inventario || []).forEach(i => {
     const pid = String(i.product_id);
@@ -475,7 +388,6 @@ function procesarYRenderizar(productos, ventas, inventario, lastSync) {
     };
   });
 
-  // Stats
   document.getElementById('stat-total').textContent = allProductos.length;
   document.getElementById('stat-stale').textContent = allProductos.filter(p => p.daysSinceLast > 30).length;
   document.getElementById('stat-decline').textContent = allProductos.filter(p => p.phase.label === 'declive').length;
@@ -484,7 +396,10 @@ function procesarYRenderizar(productos, ventas, inventario, lastSync) {
 
   if (lastSync) {
     const d = new Date(lastSync);
-    document.getElementById('sync-info').textContent = 'Última sincronización: ' + d.toLocaleDateString('es-AR') + ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) + ' — ' + ventas.length + ' ventas cargadas';
+    document.getElementById('sync-info').textContent =
+      'Última actualización: ' + d.toLocaleDateString('es-AR') + ' ' +
+      d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) +
+      ' — ' + ventas.length + ' ventas cargadas';
   }
 
   document.getElementById('dashboard').style.display = 'block';
@@ -492,7 +407,7 @@ function procesarYRenderizar(productos, ventas, inventario, lastSync) {
   renderProductos();
   renderVariantes();
   renderRanking();
-  renderCurva();
+  renderCurva(months);
   renderStock();
 }
 
@@ -588,15 +503,18 @@ function renderRanking() {
   });
 }
 
-function renderCurva() {
-  const allMonths = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic','Ene','Feb','Mar','Abr'];
+function renderCurva(months) {
+  const labels = (months || []).map(m => {
+    const [y, mo] = m.split('-');
+    return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(mo)-1];
+  });
   const top5 = [...allProductos].sort((a,b)=>b.totalSales-a.totalSales).slice(0,5);
   const colors = ['#378ADD','#1D9E75','#D85A30','#7F77DD','#BA7517'];
   document.getElementById('curva-legend').innerHTML = top5.map((p,i) => `<span><span class="legend-dot" style="background:${colors[i]};"></span>${p.name}</span>`).join('');
   if (cChart) cChart.destroy();
   cChart = new Chart(document.getElementById('curvaChart'), {
     type: 'line',
-    data: { labels: allMonths, datasets: top5.map((p,i) => ({ label: p.name, data: p.monthlySales, borderColor: colors[i], backgroundColor: 'transparent', tension: 0.35, pointRadius: 2, borderWidth: 2 })) },
+    data: { labels, datasets: top5.map((p,i) => ({ label: p.name, data: p.monthlySales, borderColor: colors[i], backgroundColor: 'transparent', tension: 0.35, pointRadius: 2, borderWidth: 2 })) },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888', font: { size: 11 } }, grid: { color: '#f0f0f0' } }, y: { ticks: { color: '#888', font: { size: 11 } }, grid: { color: '#f0f0f0' } } } }
   });
 }
@@ -618,13 +536,7 @@ function switchTab(id, btn) {
   btn.classList.add('active');
 }
 
-// Al cargar la página, intentar usar caché existente
-window.onload = function() {
-  const cached = loadCache();
-  if (cached) {
-    document.getElementById('sync-info').textContent = 'Datos guardados encontrados. Ingresá tu API Key y hacé clic en "Conectar y analizar" para cargarlos, o en "Actualizar datos" para sincronizar.';
-  }
-};
+window.onload = cargarTodo;
 </script>
 </body>
 </html>
