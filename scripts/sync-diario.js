@@ -1,8 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 
-// Cargar .env manualmente (sin dependencia de dotenv)
 function loadEnv() {
   try {
     const lines = readFileSync(resolve(process.cwd(), '.env'), 'utf8').split('\n');
@@ -15,9 +14,7 @@ function loadEnv() {
       const val = trimmed.slice(eq + 1).trim().replace(/^['"]|['"]$/g, '');
       if (!process.env[key]) process.env[key] = val;
     }
-  } catch {
-    // .env no encontrado, se usan las variables de entorno del sistema
-  }
+  } catch { /* usa variables del sistema */ }
 }
 
 loadEnv();
@@ -26,6 +23,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const GN_TOKEN    = process.env.GN_TOKEN;
 const GN_BASE     = 'https://www.gestionnube.com/api/v1';
+const LAST_SYNC_FILE = resolve(process.cwd(), '.last-sync');
 
 if (!SUPABASE_URL || !SUPABASE_KEY || !GN_TOKEN) {
   console.error('Faltan variables de entorno: SUPABASE_URL, SUPABASE_KEY, GN_TOKEN');
@@ -34,9 +32,30 @@ if (!SUPABASE_URL || !SUPABASE_KEY || !GN_TOKEN) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function readLastSync() {
+  try {
+    const raw = JSON.parse(readFileSync(LAST_SYNC_FILE, 'utf8'));
+    return {
+      ventasDate:    raw.ventasDate    || null,
+      productosDate: raw.productosDate || null,
+    };
+  } catch {
+    return { ventasDate: null, productosDate: null };
+  }
+}
+
+function writeLastSync(data) {
+  writeFileSync(LAST_SYNC_FILE, JSON.stringify(data, null, 2));
+}
+
+function daysBetween(isoA, isoB) {
+  return Math.abs(new Date(isoA) - new Date(isoB)) / 86400000;
+}
+
 async function gnFetch(path) {
-  const url = `${GN_BASE}/${path}`;
-  const res = await fetch(url, {
+  const res = await fetch(`${GN_BASE}/${path}`, {
     headers: { 'Authorization': `Bearer ${GN_TOKEN}`, 'Accept': 'application/json' }
   });
   const text = await res.text();
@@ -67,8 +86,10 @@ async function fetchAllPages(basePath) {
   return results;
 }
 
+// ── Sync functions ────────────────────────────────────────────────────────────
+
 async function syncProductos() {
-  console.log('\n[productos] Descargando...');
+  console.log('\n[productos] Descargando (sync semanal)...');
   const rows = await fetchAllPages('productos/obtener?per_page=50');
   const productos = rows.map(p => ({
     id:               p.id,
@@ -91,7 +112,7 @@ async function syncProductos() {
 }
 
 async function syncInventario() {
-  console.log('\n[inventario] Descargando...');
+  console.log('\n[inventario] Descargando (siempre completo)...');
   const rows = await fetchAllPages('inventario/obtener?per_page=50');
   const inventario = rows.map(r => ({
     product_id:         r.product_id,
@@ -109,10 +130,10 @@ async function syncInventario() {
   return inventario.length;
 }
 
-async function syncVentas() {
+async function syncVentas(fromDate) {
   const today = new Date().toISOString().substring(0, 10);
-  const basePath = `ventas/obtener?from=2025-01-01&to=${today}&include_details=1&per_page=50`;
-  console.log(`\n[ventas] Descargando desde 2025-01-01 hasta ${today}...`);
+  const basePath = `ventas/obtener?from=${fromDate}&to=${today}&include_details=1&per_page=50`;
+  console.log(`\n[ventas] Descargando desde ${fromDate} hasta ${today}...`);
   const rows = await fetchAllPages(basePath);
 
   const ventas = rows.map(v => ({
@@ -163,22 +184,51 @@ async function syncVentas() {
   return { ventas: ventas.length, detalles: detalles.length };
 }
 
+// ── Main ──────────────────────────────────────────────────────────────────────
+
 async function main() {
-  console.log('=== Sincronización inicial con Gestión Nube ===');
-  console.log(`Supabase: ${SUPABASE_URL}`);
-  console.log(`GN token: ${GN_TOKEN.substring(0, 6)}...`);
+  const now = new Date().toISOString();
+  const today = now.substring(0, 10);
+
+  const lastSync = readLastSync();
+  console.log('=== Sincronización diaria — Gestión Nube ===');
+  console.log(`Fecha actual:        ${today}`);
+  console.log(`Último sync ventas:  ${lastSync.ventasDate || 'nunca'}`);
+  console.log(`Último sync prods:   ${lastSync.productosDate || 'nunca'}`);
+
+  // Ventas: desde el último sync (o 2025-01-01 si nunca se corrió)
+  const ventasFrom = lastSync.ventasDate || '2025-01-01';
+
+  // Productos: solo si pasaron más de 7 días desde el último sync de productos
+  const productosPendiente = !lastSync.productosDate ||
+    daysBetween(lastSync.productosDate, today) >= 7;
+
+  if (productosPendiente) {
+    console.log('\nSync semanal de productos activado.');
+  }
 
   try {
-    const productos  = await syncProductos();
     const inventario = await syncInventario();
-    const ventas     = await syncVentas();
+    const ventas     = await syncVentas(ventasFrom);
+    let productos    = 'omitido';
+
+    if (productosPendiente) {
+      productos = await syncProductos();
+    }
+
+    const newSync = {
+      ventasDate:    today,
+      productosDate: productosPendiente ? today : lastSync.productosDate,
+    };
+    writeLastSync(newSync);
 
     console.log('\n=== Resultado ===');
-    console.log(`Productos:      ${productos}`);
     console.log(`Inventario:     ${inventario}`);
     console.log(`Ventas:         ${ventas.ventas}`);
     console.log(`Venta detalles: ${ventas.detalles}`);
-    console.log('\nSincronización completada.');
+    console.log(`Productos:      ${productos}`);
+    console.log(`\nSync guardado en .last-sync`);
+    console.log('Sincronización diaria completada.');
   } catch (e) {
     console.error('\nERROR:', e.message);
     process.exit(1);
