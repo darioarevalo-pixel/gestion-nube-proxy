@@ -226,6 +226,18 @@ async function apiFetch(path, apiKey) {
   return data;
 }
 
+async function apiFetchConReintentos(path, apiKey, reintentos = 3, espera = 2000) {
+  for (let intento = 1; intento <= reintentos; intento++) {
+    try {
+      return await apiFetch(path, apiKey);
+    } catch(e) {
+      if (intento === reintentos) throw e;
+      setStatus(`Error en página, reintentando (${intento}/${reintentos - 1})...`, 'error');
+      await new Promise(r => setTimeout(r, espera));
+    }
+  }
+}
+
 function getKey() { return document.getElementById('api-key').value.trim(); }
 
 async function iniciarCarga() {
@@ -269,7 +281,7 @@ async function cargarTodo(key) {
     let vPage = 1;
     let vTotal = 1;
     while (true) {
-      const d = await apiFetch(`ventas/obtener?from=2025-01-01&to=2026-04-04&include_details=1&per_page=200&page=${vPage}`, key);
+      const d = await apiFetchConReintentos(`ventas/obtener?from=2025-01-01&to=2026-04-04&include_details=1&per_page=200&page=${vPage}`, key);
       ventas = ventas.concat(d.data || []);
       vTotal = d.meta?.total || ventas.length;
       setStatus(`Cargando ventas... ${ventas.length} de ${vTotal}`);
@@ -299,7 +311,7 @@ async function sincronizar() {
     let nuevas = [];
     let page = 1;
     while (true) {
-      const d = await apiFetch(`ventas/obtener?from=${lastDate}&to=2026-04-04&include_details=1&per_page=200&page=${page}`, key);
+      const d = await apiFetchConReintentos(`ventas/obtener?from=${lastDate}&to=2026-04-04&include_details=1&per_page=200&page=${page}`, key);
       nuevas = nuevas.concat(d.data || []);
       setStatus(`Sincronizando... ${nuevas.length} ventas nuevas`);
       if (!d.meta?.has_more_pages || (d.data || []).length === 0) break;
