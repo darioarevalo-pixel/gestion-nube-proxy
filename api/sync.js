@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = 'https://srqzzffmiiescffabtlc.supabase.co';
-const GN_BASE = 'https://www.gestionnube.com/api/v1';
+const PROXY_BASE = 'https://gestion-nube-proxy.vercel.app/api/proxy';
 
 function getSupabase() {
   const key = process.env.SUPABASE_KEY;
@@ -10,7 +10,8 @@ function getSupabase() {
 }
 
 async function gnFetch(path, token) {
-  const res = await fetch(`${GN_BASE}/${path}`, {
+  const url = `${PROXY_BASE}?path=${encodeURIComponent(path)}`;
+  const res = await fetch(url, {
     headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
   });
   const text = await res.text();
