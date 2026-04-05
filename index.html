@@ -267,7 +267,7 @@ async function cargarTodo(key) {
     let invPage = 1;
     let invTotal = 1;
     while (true) {
-      const d = await apiFetch(`inventario/obtener?per_page=200&page=${invPage}`, key);
+      const d = await apiFetch(`inventario/obtener?per_page=50&page=${invPage}`, key);
       inventario = inventario.concat(d.data || []);
       invTotal = d.meta?.total || inventario.length;
       setStatus(`Cargando inventario... ${inventario.length} de ${invTotal}`);
@@ -281,7 +281,7 @@ async function cargarTodo(key) {
     let vPage = 1;
     let vTotal = 1;
     while (true) {
-      const d = await apiFetchConReintentos(`ventas/obtener?from=2025-01-01&to=2026-04-04&include_details=1&per_page=200&page=${vPage}`, key);
+      const d = await apiFetchConReintentos(`ventas/obtener?from=2025-01-01&to=2026-04-04&include_details=1&per_page=50&page=${vPage}`, key);
       ventas = ventas.concat(d.data || []);
       vTotal = d.meta?.total || ventas.length;
       setStatus(`Cargando ventas... ${ventas.length} de ${vTotal}`);
@@ -311,7 +311,7 @@ async function sincronizar() {
     let nuevas = [];
     let page = 1;
     while (true) {
-      const d = await apiFetchConReintentos(`ventas/obtener?from=${lastDate}&to=2026-04-04&include_details=1&per_page=200&page=${page}`, key);
+      const d = await apiFetchConReintentos(`ventas/obtener?from=${lastDate}&to=2026-04-04&include_details=1&per_page=50&page=${page}`, key);
       nuevas = nuevas.concat(d.data || []);
       setStatus(`Sincronizando... ${nuevas.length} ventas nuevas`);
       if (!d.meta?.has_more_pages || (d.data || []).length === 0) break;
