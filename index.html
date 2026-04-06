@@ -326,7 +326,7 @@
         <div style="font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Detalle por proveedor</div>
         <div class="toolbar" style="margin-bottom:0;">
           <select id="prov-selector" onchange="renderProveedores()" style="min-width:180px;"></select>
-          <label style="font-size:12px;color:#666;">Ingresados desde</label>
+          <label style="font-size:12px;color:#666;">Primera venta desde</label>
           <input type="date" id="prov-fecha-desde" onchange="renderProveedores()" style="padding:5px 8px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
           <label style="font-size:12px;color:#666;">hasta</label>
           <input type="date" id="prov-fecha-hasta" onchange="renderProveedores()" style="padding:5px 8px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
@@ -577,13 +577,14 @@ function procesarYRenderizar(productos, ventas, detalles, inventario, vmMes, vmC
     const name = item.product_name || '';
     const size = item.size || '';
 
-    if (!vprod[pid]) vprod[pid] = { total: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null, name };
+    if (!vprod[pid]) vprod[pid] = { total: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null, first: null, name };
     vprod[pid].total += qty;
     vprod[pid].byMonth[fechaMes] = (vprod[pid].byMonth[fechaMes] || 0) + qty;
     if (fechaObj >= cutoff30) vprod[pid].s30 += qty;
     else if (fechaObj >= cutoff60) vprod[pid].s60 += qty;
     if (fechaObj >= cutoff90) vprod[pid].s90 += qty;
-    if (!vprod[pid].last || fecha > vprod[pid].last) vprod[pid].last = fecha;
+    if (!vprod[pid].last  || fecha > vprod[pid].last)  vprod[pid].last  = fecha;
+    if (!vprod[pid].first || fecha < vprod[pid].first) vprod[pid].first = fecha;
 
     if (!vvar[vid]) vvar[vid] = { total: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null, name, size, pid, sid };
     vvar[vid].total += qty;
@@ -689,7 +690,7 @@ function procesarYRenderizar(productos, ventas, detalles, inventario, vmMes, vmC
     provData[p.proveedor].products.push({
       id: pid, name: p.name,
       retailer_price: rp, unit_cost: uc,
-      created_at: p.created_at ? p.created_at.substring(0, 10) : null,
+      firstSale: sales.first || null,
       stock, soldTotal: sales.total, soldByMonth: sales.byMonth, margin,
     });
   });
@@ -1160,12 +1161,12 @@ function renderProveedores() {
   const fechaDesde = document.getElementById('prov-fecha-desde')?.value || '';
   const fechaHasta = document.getElementById('prov-fecha-hasta')?.value || '';
 
-  // Filtrar productos por rango de created_at si hay fechas seleccionadas
+  // Filtrar productos por rango de primera venta
   const { products } = allProveedoresData[prov];
   const filtered = products.filter(p => {
-    if (!p.created_at) return !fechaDesde && !fechaHasta;
-    if (fechaDesde && p.created_at < fechaDesde) return false;
-    if (fechaHasta && p.created_at > fechaHasta) return false;
+    if (!p.firstSale) return !fechaDesde && !fechaHasta;
+    if (fechaDesde && p.firstSale < fechaDesde) return false;
+    if (fechaHasta && p.firstSale > fechaHasta) return false;
     return true;
   });
 
@@ -1216,17 +1217,17 @@ function renderProveedores() {
   // Ranking filtrado por fecha de ingreso
   const sorted = [...filtered].sort((a, b) => b.soldTotal - a.soldTotal);
   const dateLabel = fechaDesde || fechaHasta
-    ? ` — filtrando por ingreso${fechaDesde ? ' desde ' + fechaDesde : ''}${fechaHasta ? ' hasta ' + fechaHasta : ''} (${filtered.length} productos)`
+    ? ` — primera venta${fechaDesde ? ' desde ' + fechaDesde : ''}${fechaHasta ? ' hasta ' + fechaHasta : ''} (${filtered.length} productos)`
     : ` (${filtered.length} productos)`;
 
   document.getElementById('prov-tbody').innerHTML = sorted.length
     ? sorted.map((p, i) => {
         const marginStr  = p.margin !== null ? p.margin.toFixed(1) + '%' : '—';
         const marginColor = p.margin > 40 ? '#1d9e75' : p.margin > 20 ? '#ba7517' : '#e24b4a';
-        const ingreso = p.created_at || '—';
+        const primeraVenta = p.firstSale || '—';
         return `<tr>
           <td style="color:#888;font-size:11px;">${i + 1}</td>
-          <td style="font-weight:500;">${esc(p.name)}<br><span style="font-size:10px;color:#aaa;">Ingreso: ${ingreso}</span></td>
+          <td style="font-weight:500;">${esc(p.name)}<br><span style="font-size:10px;color:#aaa;">Primera venta: ${primeraVenta}</span></td>
           <td style="font-weight:600;">${p.soldTotal.toLocaleString('es-AR')}</td>
           <td>${p.stock.toLocaleString('es-AR')}</td>
           <td style="color:${p.margin !== null ? marginColor : '#aaa'};">${marginStr}</td>
