@@ -310,9 +310,30 @@
     </div>
 
     <div id="tab-proveedores" class="section">
-      <div class="toolbar">
-        <select id="prov-selector" onchange="renderProveedores()" style="min-width:180px;"></select>
+
+      <!-- Comparativa entre todos los proveedores -->
+      <div class="card">
+        <div style="font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;">Comparativa entre proveedores</div>
+        <div class="chart-wrap" style="height:280px;"><canvas id="provCompChart"></canvas></div>
       </div>
+      <div class="card" style="margin-top:0;">
+        <div style="font-size:11px;color:#888;margin-bottom:8px;">Compra estimada por proveedor ($)</div>
+        <div class="chart-wrap" id="provCompra-wrap"><canvas id="provCompraChart"></canvas></div>
+      </div>
+
+      <!-- Detalle por proveedor -->
+      <div class="card" style="margin-top:4px;">
+        <div style="font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Detalle por proveedor</div>
+        <div class="toolbar" style="margin-bottom:0;">
+          <select id="prov-selector" onchange="renderProveedores()" style="min-width:180px;"></select>
+          <label style="font-size:12px;color:#666;">Ingresados desde</label>
+          <input type="date" id="prov-fecha-desde" onchange="renderProveedores()" style="padding:5px 8px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+          <label style="font-size:12px;color:#666;">hasta</label>
+          <input type="date" id="prov-fecha-hasta" onchange="renderProveedores()" style="padding:5px 8px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+          <button class="btn-sm" onclick="document.getElementById('prov-fecha-desde').value='';document.getElementById('prov-fecha-hasta').value='';renderProveedores();">Limpiar</button>
+        </div>
+      </div>
+
       <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
         <div class="stat"><div class="stat-label">Stock total (unid.)</div><div class="stat-value info" id="prov-stat-stock">—</div></div>
         <div class="stat"><div class="stat-label">Unidades vendidas</div><div class="stat-value" id="prov-stat-sold">—</div></div>
@@ -332,7 +353,6 @@
             <th>Vendidas</th>
             <th>Stock</th>
             <th>Rentab.</th>
-            <th>Compra est.</th>
           </tr></thead>
           <tbody id="prov-tbody"></tbody>
         </table>
@@ -398,7 +418,7 @@ let allProductos = [], allVariantes = [];
 let sortState = { productos: { col: 'sales30', dir: -1 }, variantes: { col: 'sales30', dir: -1 } };
 let pageState = { productos: 1, variantes: 1 };
 const PAGE_SIZE = 50;
-let rankChart = null, cChart = null, sChart = null, vmChart = null, fmChart = null, provChart = null;
+let rankChart = null, cChart = null, sChart = null, vmChart = null, fmChart = null, provChart = null, provCompChart = null, provCompraChart = null;
 let allMonthlyStats = [], allMonths = [], allFundasStats = {}, allProveedoresData = {};
 
 function setStatus(msg, type) {
@@ -443,7 +463,7 @@ async function cargarTodo() {
   try {
     setProgress(5);
     setStatus('Cargando productos...');
-    const productos = await fetchAll('productos', 'select=id,name,category,proveedor,retailer_price,unit_cost&order=id', 'productos');
+    const productos = await fetchAll('productos', 'select=id,name,category,proveedor,retailer_price,unit_cost,created_at&order=id', 'productos');
     setProgress(15);
 
     setStatus('Cargando inventario...');
@@ -669,6 +689,7 @@ function procesarYRenderizar(productos, ventas, detalles, inventario, vmMes, vmC
     provData[p.proveedor].products.push({
       id: pid, name: p.name,
       retailer_price: rp, unit_cost: uc,
+      created_at: p.created_at ? p.created_at.substring(0, 10) : null,
       stock, soldTotal: sales.total, soldByMonth: sales.byMonth, margin,
     });
   });
@@ -1047,6 +1068,7 @@ function updateProveedoresTab() {
   const isZattia = currentCuenta === CUENTAS.zattia;
   document.getElementById('tab-btn-proveedores').style.display = isZattia ? '' : 'none';
   if (isZattia) {
+    renderProveedoresComparativa();
     initProveedorSelector();
     renderProveedores();
   }
@@ -1060,13 +1082,94 @@ function initProveedorSelector() {
   if (current && proveedores.includes(current)) sel.value = current;
 }
 
+function renderProveedoresComparativa() {
+  const proveedores = Object.keys(allProveedoresData).sort();
+  const stats = proveedores.map(prov => {
+    const { products } = allProveedoresData[prov];
+    const totalSold = products.reduce((s, p) => s + p.soldTotal, 0);
+    const totalStock = products.reduce((s, p) => s + p.stock, 0);
+    const validMargins = products.filter(p => p.margin !== null);
+    const avgMargin = validMargins.length
+      ? validMargins.reduce((s, p) => s + p.margin, 0) / validMargins.length : 0;
+    const compra = products.reduce((s, p) => s + (p.soldTotal + p.stock) * p.unit_cost, 0);
+    return { prov, totalSold, totalStock, avgMargin, compra };
+  });
+
+  // Gráfico 1: unidades vendidas (izq) + rentabilidad % (der)
+  if (provCompChart) provCompChart.destroy();
+  provCompChart = new Chart(document.getElementById('provCompChart'), {
+    type: 'bar',
+    data: {
+      labels: stats.map(s => s.prov),
+      datasets: [
+        {
+          label: 'Unidades vendidas',
+          data: stats.map(s => s.totalSold),
+          backgroundColor: '#378ADD', borderRadius: 3, yAxisID: 'y',
+        },
+        {
+          label: 'Rentabilidad %',
+          data: stats.map(s => parseFloat(s.avgMargin.toFixed(1))),
+          backgroundColor: '#1D9E75', borderRadius: 3, yAxisID: 'y2',
+        },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { font: { size: 11 }, color: '#666' } } },
+      scales: {
+        x:  { ticks: { color: '#555', font: { size: 11 } }, grid: { display: false } },
+        y:  { position: 'left',  ticks: { color: '#378ADD', font: { size: 11 } }, grid: { color: '#f0f0f0' }, title: { display: true, text: 'Unidades', color: '#378ADD', font: { size: 10 } } },
+        y2: { position: 'right', ticks: { color: '#1D9E75', font: { size: 11 }, callback: v => v + '%' }, grid: { display: false }, title: { display: true, text: 'Rentab. %', color: '#1D9E75', font: { size: 10 } } },
+      }
+    }
+  });
+
+  // Gráfico 2: compra estimada (barras horizontales, ordenado de mayor a menor)
+  const sortedByCompra = [...stats].sort((a, b) => b.compra - a.compra);
+  const wrap = document.getElementById('provCompra-wrap');
+  wrap.style.height = Math.max(160, sortedByCompra.length * 28 + 40) + 'px';
+  if (provCompraChart) provCompraChart.destroy();
+  provCompraChart = new Chart(document.getElementById('provCompraChart'), {
+    type: 'bar',
+    data: {
+      labels: sortedByCompra.map(s => s.prov),
+      datasets: [{
+        data: sortedByCompra.map(s => Math.round(s.compra)),
+        backgroundColor: '#7F77DD', borderRadius: 3,
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => '$' + ctx.raw.toLocaleString('es-AR') } }
+      },
+      scales: {
+        x: { ticks: { color: '#888', font: { size: 10 }, callback: v => '$' + (v/1000).toFixed(0) + 'k' }, grid: { color: '#f0f0f0' } },
+        y: { ticks: { color: '#444', font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
 function renderProveedores() {
   const prov = document.getElementById('prov-selector')?.value;
   if (!prov || !allProveedoresData[prov]) return;
 
-  const { products } = allProveedoresData[prov];
+  const fechaDesde = document.getElementById('prov-fecha-desde')?.value || '';
+  const fechaHasta = document.getElementById('prov-fecha-hasta')?.value || '';
 
-  // Totales KPI
+  // Filtrar productos por rango de created_at si hay fechas seleccionadas
+  const { products } = allProveedoresData[prov];
+  const filtered = products.filter(p => {
+    if (!p.created_at) return !fechaDesde && !fechaHasta;
+    if (fechaDesde && p.created_at < fechaDesde) return false;
+    if (fechaHasta && p.created_at > fechaHasta) return false;
+    return true;
+  });
+
+  // KPIs sobre todos los productos del proveedor (sin filtro de fecha)
   const totalStock = products.reduce((s, p) => s + p.stock, 0);
   const totalSold  = products.reduce((s, p) => s + p.soldTotal, 0);
   const validMargins = products.filter(p => p.margin !== null);
@@ -1080,7 +1183,7 @@ function renderProveedores() {
   document.getElementById('prov-stat-purchase').textContent = estimatedPurchase > 0
     ? '$' + Math.round(estimatedPurchase).toLocaleString('es-AR') : '—';
 
-  // Gráfico: últimos 12 meses
+  // Gráfico mensual (todos los productos del proveedor)
   const MONTH_NAMES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const chartMonths = allMonths.slice(-12);
   const labels = chartMonths.map(m => {
@@ -1090,7 +1193,6 @@ function renderProveedores() {
   const chartData = chartMonths.map(m =>
     products.reduce((s, p) => s + (p.soldByMonth[m] || 0), 0)
   );
-
   if (provChart) provChart.destroy();
   provChart = new Chart(document.getElementById('provChart'), {
     type: 'bar',
@@ -1111,22 +1213,30 @@ function renderProveedores() {
     }
   });
 
-  // Tabla ranking
-  const sorted = [...products].sort((a, b) => b.soldTotal - a.soldTotal);
-  document.getElementById('prov-tbody').innerHTML = sorted.map((p, i) => {
-    const marginStr = p.margin !== null ? p.margin.toFixed(1) + '%' : '—';
-    const marginColor = p.margin > 40 ? '#1d9e75' : p.margin > 20 ? '#ba7517' : '#e24b4a';
-    const compra = (p.soldTotal + p.stock) * p.unit_cost;
-    const compraStr = compra > 0 ? '$' + Math.round(compra).toLocaleString('es-AR') : '—';
-    return `<tr>
-      <td style="color:#888;font-size:11px;">${i + 1}</td>
-      <td style="font-weight:500;">${esc(p.name)}</td>
-      <td style="font-weight:600;">${p.soldTotal.toLocaleString('es-AR')}</td>
-      <td>${p.stock.toLocaleString('es-AR')}</td>
-      <td style="color:${p.margin !== null ? marginColor : '#aaa'};">${marginStr}</td>
-      <td style="color:#666;">${compraStr}</td>
-    </tr>`;
-  }).join('');
+  // Ranking filtrado por fecha de ingreso
+  const sorted = [...filtered].sort((a, b) => b.soldTotal - a.soldTotal);
+  const dateLabel = fechaDesde || fechaHasta
+    ? ` — filtrando por ingreso${fechaDesde ? ' desde ' + fechaDesde : ''}${fechaHasta ? ' hasta ' + fechaHasta : ''} (${filtered.length} productos)`
+    : ` (${filtered.length} productos)`;
+
+  document.getElementById('prov-tbody').innerHTML = sorted.length
+    ? sorted.map((p, i) => {
+        const marginStr  = p.margin !== null ? p.margin.toFixed(1) + '%' : '—';
+        const marginColor = p.margin > 40 ? '#1d9e75' : p.margin > 20 ? '#ba7517' : '#e24b4a';
+        const ingreso = p.created_at || '—';
+        return `<tr>
+          <td style="color:#888;font-size:11px;">${i + 1}</td>
+          <td style="font-weight:500;">${esc(p.name)}<br><span style="font-size:10px;color:#aaa;">Ingreso: ${ingreso}</span></td>
+          <td style="font-weight:600;">${p.soldTotal.toLocaleString('es-AR')}</td>
+          <td>${p.stock.toLocaleString('es-AR')}</td>
+          <td style="color:${p.margin !== null ? marginColor : '#aaa'};">${marginStr}</td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="5" style="color:#aaa;text-align:center;padding:20px;">Sin productos en ese rango de fechas</td></tr>';
+
+  // Actualizar título de la tabla con info del filtro
+  document.querySelector('#tab-proveedores .card:last-child > div:first-child').textContent =
+    'Productos más vendidos' + dateLabel;
 }
 
 function switchTab(id, btn) {
