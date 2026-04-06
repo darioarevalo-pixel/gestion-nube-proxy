@@ -91,6 +91,13 @@
     <div class="login-brand">BDI <span>Monitor</span></div>
     <div class="login-sub">Panel de análisis de ventas</div>
     <div class="login-field">
+      <label>Empresa</label>
+      <select id="login-empresa" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;background:#fff;outline:none;">
+        <option value="bdi">BDI Accesorios</option>
+        <option value="zattia">Zattia</option>
+      </select>
+    </div>
+    <div class="login-field">
       <label>Usuario</label>
       <input type="text" id="login-user" placeholder="Nombre completo" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
     </div>
@@ -342,8 +349,19 @@ function normalizeIphoneModel(size) {
   return null;
 }
 
-const SUPABASE_URL = 'https://srqzzffmiiescffabtlc.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNycXp6ZmZtaWllc2NmZmFidGxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNzg1NDksImV4cCI6MjA5MDk1NDU0OX0.UJGWTPCXhhxv2Q-4twUBvOivPLUk0SSQvyvtEkDmWLg';
+const CUENTAS = {
+  bdi: {
+    nombre: 'BDI Accesorios',
+    url:    'https://srqzzffmiiescffabtlc.supabase.co',
+    key:    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNycXp6ZmZtaWllc2NmZmFidGxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNzg1NDksImV4cCI6MjA5MDk1NDU0OX0.UJGWTPCXhhxv2Q-4twUBvOivPLUk0SSQvyvtEkDmWLg',
+  },
+  zattia: {
+    nombre: 'Zattia',
+    url:    'https://avmdktmyseonacxycimz.supabase.co',
+    key:    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2bWRrdG15c2VvbmFjeHljaW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0OTUzNDcsImV4cCI6MjA5MTA3MTM0N30.mqm1dhY2HUHlSUHyTfNjA7MphjicbKJqFo6jc_guTRo',
+  },
+};
+let currentCuenta = null;
 const TODAY = new Date();
 let allProductos = [], allVariantes = [];
 let sortState = { productos: { col: 'sales30', dir: -1 }, variantes: { col: 'sales30', dir: -1 } };
@@ -366,8 +384,8 @@ function setProgress(pct) {
 }
 
 async function sbFetch(table, params) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+  const res = await fetch(`${currentCuenta.url}/rest/v1/${table}?${params}`, {
+    headers: { 'apikey': currentCuenta.key, 'Authorization': 'Bearer ' + currentCuenta.key }
   });
   if (!res.ok) {
     const text = await res.text();
@@ -985,21 +1003,37 @@ const USERS = { 'Bruno Arevalo': 'BDI123456', 'Dario Arevalo': 'BDI123456' };
 let currentUser = null;
 
 function doLogin() {
-  const user = document.getElementById('login-user').value.trim();
-  const pass = document.getElementById('login-pass').value;
+  const user    = document.getElementById('login-user').value.trim();
+  const pass    = document.getElementById('login-pass').value;
+  const empresa = document.getElementById('login-empresa').value;
   if (USERS[user] && USERS[user] === pass) {
-    currentUser = user;
+    currentUser   = user;
+    currentCuenta = CUENTAS[empresa];
     document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('user-info').innerHTML =
-      user + ' <button onclick="doLogout()">Salir</button>';
+    renderUserInfo();
     cargarTodo();
   } else {
     document.getElementById('login-error').textContent = 'Usuario o contraseña incorrectos.';
   }
 }
 
+function renderUserInfo() {
+  const opts = Object.entries(CUENTAS)
+    .map(([k, v]) => `<option value="${k}"${currentCuenta === v ? ' selected' : ''}>${v.nombre}</option>`)
+    .join('');
+  document.getElementById('user-info').innerHTML =
+    `<select onchange="cambiarEmpresa(this.value)" style="font-size:12px;padding:3px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#444;margin-right:8px;">${opts}</select>` +
+    `${currentUser} <button onclick="doLogout()">Salir</button>`;
+}
+
+function cambiarEmpresa(empresaKey) {
+  currentCuenta = CUENTAS[empresaKey];
+  cargarTodo();
+}
+
 function doLogout() {
-  currentUser = null;
+  currentUser   = null;
+  currentCuenta = null;
   document.getElementById('login-screen').classList.remove('hidden');
   document.getElementById('login-pass').value = '';
   document.getElementById('login-error').textContent = '';
