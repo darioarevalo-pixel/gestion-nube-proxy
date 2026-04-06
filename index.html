@@ -747,24 +747,44 @@ function procesarYRenderizar(productos, ventas, detalles, inventario, vmMes, vmC
   allProveedoresData = provData;
 
   // Datos de colores (para pestaña Colores — Zattia)
-  const TALLES = new Set(['s','m','l','xl','xxl','xs','xxxl','xss',
-    '32','34','36','38','40','42','44','46','48','50',
-    'variante única','variante unica','unico','único']);
+  const TALLE_VALS = new Set(['s','m','l','xl','xxl','xs','xxxl','xss',
+    '32','34','36','38','40','42','44','46','48','50']);
+
+  function toTitleCase(s) {
+    return s.trim().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+  }
+
+  function extractColor(size) {
+    if (!size) return null;
+    const raw = size.trim();
+    const lower = raw.toLowerCase();
+    if (lower === 'variante única' || lower === 'variante unica') return '__UNICA__';
+    // Formato "Parte1 - Parte2": separar y descartar talles
+    if (raw.includes(' - ')) {
+      const parts = raw.split(' - ').map(p => p.trim()).filter(Boolean);
+      const colorParts = parts.filter(p => !TALLE_VALS.has(p.toLowerCase()));
+      if (colorParts.length === 0) return null; // todo son talles
+      return toTitleCase(colorParts[0]);
+    }
+    // Valor único: descartar si es talle
+    if (TALLE_VALS.has(lower)) return null;
+    return toTitleCase(raw);
+  }
+
   const coloresSales = [];
   (detalles || []).forEach(item => {
     const fecha = (ventasMap[String(item.sale_id)] || '').substring(0, 10);
     if (!fecha) return;
     const mes = fecha.substring(0, 7);
     const qty = item.quantity || 1;
-    const sizeLower = (item.size || '').trim().toLowerCase();
-    if (!sizeLower || TALLES.has(sizeLower)) return;
+    const extracted = extractColor(item.size);
+    if (!extracted) return;
     let color;
-    if (sizeLower === 'variante única' || sizeLower === 'variante unica') {
+    if (extracted === '__UNICA__') {
       color = colorManualMap[item.product_name] || null;
       if (!color) return;
     } else {
-      // Title case
-      color = item.size.trim().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+      color = extracted;
     }
     coloresSales.push({ product_name: item.product_name || '', color, qty, mes });
   });
