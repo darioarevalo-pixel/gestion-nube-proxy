@@ -146,6 +146,7 @@
       <button class="tab" onclick="switchTab('ventas-mensuales', this)">Ventas mensuales</button>
       <button class="tab" onclick="switchTab('fundas-modelo', this)">Fundas por modelo</button>
       <button class="tab" id="tab-btn-proveedores" style="display:none;" onclick="switchTab('proveedores', this)">Proveedores</button>
+      <button class="tab" id="tab-btn-colores" style="display:none;" onclick="switchTab('colores', this)">Colores</button>
     </div>
 
     <div id="tab-productos" class="section visible">
@@ -358,6 +359,45 @@
         </table>
       </div>
     </div>
+
+    <div id="tab-colores" class="section">
+      <div class="toolbar">
+        <input type="text" id="col-search" placeholder="Buscar producto (ej: TOP)..." oninput="reloadColoresPanel()" style="width:200px;">
+        <select id="col-periodo" onchange="reloadColoresPanel()">
+          <option value="3">Últimos 3 meses</option>
+          <option value="6">Últimos 6 meses</option>
+          <option value="12" selected>Últimos 12 meses</option>
+          <option value="0">Todos</option>
+        </select>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+          <strong style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.04em;">Colores</strong>
+          <input type="text" id="col-color-search" placeholder="Buscar color..." oninput="filterColCheckboxes()" style="flex:1;min-width:120px;padding:4px 8px;font-size:12px;border:1px solid #ddd;border-radius:6px;">
+          <button class="btn-sm" onclick="toggleAllColores(true)">Todos</button>
+          <button class="btn-sm" onclick="toggleAllColores(false)">Ninguno</button>
+        </div>
+        <div id="col-checkboxes" class="fm-models-grid"></div>
+      </div>
+      <div class="card">
+        <div class="chart-wrap" id="col-chart-wrap"><canvas id="colChart"></canvas></div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div style="padding:12px 16px 6px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;">Por color</span>
+          <span id="col-total" style="font-size:11px;color:#aaa;"></span>
+        </div>
+        <table>
+          <thead><tr>
+            <th style="width:32px;">#</th>
+            <th>Color</th>
+            <th>Vendidas</th>
+            <th>% del total</th>
+          </tr></thead>
+          <tbody id="col-tbody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -418,8 +458,9 @@ let allProductos = [], allVariantes = [];
 let sortState = { productos: { col: 'sales30', dir: -1 }, variantes: { col: 'sales30', dir: -1 } };
 let pageState = { productos: 1, variantes: 1 };
 const PAGE_SIZE = 50;
-let rankChart = null, cChart = null, sChart = null, vmChart = null, fmChart = null, provChart = null, provCompChart = null, provCompraChart = null;
+let rankChart = null, cChart = null, sChart = null, vmChart = null, fmChart = null, provChart = null, provCompChart = null, provCompraChart = null, colChart = null;
 let allMonthlyStats = [], allMonths = [], allFundasStats = {}, allProveedoresData = {};
+let allColoresSales = [], colorManualMap = {};
 
 function setStatus(msg, type) {
   const el = document.getElementById('status');
@@ -482,6 +523,15 @@ async function cargarTodo() {
     setProgress(65);
     const vmFundas = await fetchAll('fundas_por_modelo_mes',    'select=mes,modelo,product_name,total_items&order=mes',                              'fundas');
     setProgress(75);
+
+    // Mapeo manual de colores para productos con Variante Única (solo Zattia)
+    colorManualMap = {};
+    if (currentCuenta === CUENTAS.zattia) {
+      try {
+        const cmRows = await sbFetch('variante_color_manual', 'select=product_name,color');
+        (cmRows || []).forEach(r => { colorManualMap[r.product_name] = r.color; });
+      } catch { /* tabla no disponible */ }
+    }
 
     // Ventas y detalles planos — para análisis por producto/variante
     setStatus('Cargando ventas por producto...');
@@ -696,6 +746,30 @@ function procesarYRenderizar(productos, ventas, detalles, inventario, vmMes, vmC
   });
   allProveedoresData = provData;
 
+  // Datos de colores (para pestaña Colores — Zattia)
+  const TALLES = new Set(['s','m','l','xl','xxl','xs','xxxl','xss',
+    '32','34','36','38','40','42','44','46','48','50',
+    'variante única','variante unica','unico','único']);
+  const coloresSales = [];
+  (detalles || []).forEach(item => {
+    const fecha = (ventasMap[String(item.sale_id)] || '').substring(0, 10);
+    if (!fecha) return;
+    const mes = fecha.substring(0, 7);
+    const qty = item.quantity || 1;
+    const sizeLower = (item.size || '').trim().toLowerCase();
+    if (!sizeLower || TALLES.has(sizeLower)) return;
+    let color;
+    if (sizeLower === 'variante única' || sizeLower === 'variante unica') {
+      color = colorManualMap[item.product_name] || null;
+      if (!color) return;
+    } else {
+      // Title case
+      color = item.size.trim().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    }
+    coloresSales.push({ product_name: item.product_name || '', color, qty, mes });
+  });
+  allColoresSales = coloresSales;
+
   document.getElementById('dashboard').style.display = 'block';
   setProgress(0);
   renderProductos();
@@ -707,6 +781,7 @@ function procesarYRenderizar(productos, ventas, detalles, inventario, vmMes, vmC
   initFundasSelectors();
   renderFundasPorModelo();
   updateProveedoresTab();
+  updateColoresTab();
 }
 
 function filtrarLista(lista, searchId, filterId) {
@@ -1240,6 +1315,112 @@ function renderProveedores() {
     'Productos más vendidos' + dateLabel;
 }
 
+// ── Pestaña Colores ───────────────────────────────────────────────────────────
+
+function updateColoresTab() {
+  const isZattia = currentCuenta === CUENTAS.zattia;
+  document.getElementById('tab-btn-colores').style.display = isZattia ? '' : 'none';
+  if (isZattia) reloadColoresPanel();
+}
+
+function reloadColoresPanel() {
+  const search  = (document.getElementById('col-search')?.value || '').trim().toUpperCase();
+  const periodo = parseInt(document.getElementById('col-periodo')?.value || '12');
+  const cutoff  = periodo > 0 && allMonths.length >= periodo ? allMonths[allMonths.length - periodo] : '';
+
+  const filtered = allColoresSales.filter(r => {
+    if (cutoff && r.mes < cutoff) return false;
+    if (search && !r.product_name.toUpperCase().includes(search)) return false;
+    return true;
+  });
+
+  // Colores ordenados por volumen histórico
+  const colorTotals = {};
+  filtered.forEach(r => { colorTotals[r.color] = (colorTotals[r.color] || 0) + r.qty; });
+  const colors = Object.entries(colorTotals).sort((a, b) => b[1] - a[1]).map(([c]) => c);
+
+  document.getElementById('col-checkboxes').innerHTML = colors.map(c => `
+    <label class="col-color-label fm-model-label" style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:3px 5px;border-radius:4px;">
+      <input type="checkbox" class="col-cb" value="${esc(c)}" checked onchange="renderColores()">
+      ${esc(c)}
+    </label>`).join('');
+
+  renderColores();
+}
+
+function renderColores() {
+  const search  = (document.getElementById('col-search')?.value || '').trim().toUpperCase();
+  const periodo = parseInt(document.getElementById('col-periodo')?.value || '12');
+  const cutoff  = periodo > 0 && allMonths.length >= periodo ? allMonths[allMonths.length - periodo] : '';
+
+  const filtered = allColoresSales.filter(r => {
+    if (cutoff && r.mes < cutoff) return false;
+    if (search && !r.product_name.toUpperCase().includes(search)) return false;
+    return true;
+  });
+
+  const checkedColors = new Set([...document.querySelectorAll('.col-cb:checked')].map(cb => cb.value));
+
+  const byColor = {};
+  filtered.forEach(r => {
+    if (!checkedColors.has(r.color)) return;
+    byColor[r.color] = (byColor[r.color] || 0) + r.qty;
+  });
+
+  const sorted = Object.entries(byColor).sort((a, b) => b[1] - a[1]);
+  const total  = sorted.reduce((s, [, q]) => s + q, 0);
+
+  // Gráfico
+  const wrap = document.getElementById('col-chart-wrap');
+  wrap.style.height = Math.max(240, sorted.length * 26 + 60) + 'px';
+  if (colChart) colChart.destroy();
+  colChart = new Chart(document.getElementById('colChart'), {
+    type: 'bar',
+    data: {
+      labels: sorted.map(([c]) => c),
+      datasets: [{ data: sorted.map(([, q]) => q), backgroundColor: '#D85A30', borderRadius: 4 }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#888', font: { size: 11 } }, grid: { color: '#f0f0f0' } },
+        y: { ticks: { color: '#444', font: { size: 12 } }, grid: { display: false } }
+      }
+    }
+  });
+
+  // Tabla
+  document.getElementById('col-tbody').innerHTML = sorted.map(([color, qty], i) => {
+    const pct = total > 0 ? (qty / total * 100).toFixed(1) : '0.0';
+    return `<tr>
+      <td style="color:#888;font-size:11px;width:32px;">${i + 1}</td>
+      <td style="font-weight:500;">${esc(color)}</td>
+      <td style="font-weight:600;">${qty.toLocaleString('es-AR')}</td>
+      <td style="color:#666;">${pct}%
+        <div style="display:inline-block;width:60px;height:4px;background:#e5e5e5;border-radius:2px;margin-left:6px;vertical-align:middle;">
+          <div style="width:${Math.min(100, pct)}%;height:100%;background:#D85A30;border-radius:2px;"></div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('col-total').textContent =
+    total.toLocaleString('es-AR') + ' unidades · ' + sorted.length + ' colores';
+}
+
+function toggleAllColores(checked) {
+  document.querySelectorAll('.col-cb').forEach(cb => cb.checked = checked);
+  renderColores();
+}
+
+function filterColCheckboxes() {
+  const q = document.getElementById('col-color-search').value.toLowerCase();
+  document.querySelectorAll('.col-color-label').forEach(lbl => {
+    lbl.style.display = lbl.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
 function switchTab(id, btn) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('visible'));
   document.getElementById('tab-' + id).classList.add('visible');
@@ -1277,6 +1458,7 @@ function renderUserInfo() {
 function cambiarEmpresa(empresaKey) {
   currentCuenta = CUENTAS[empresaKey];
   updateProveedoresTab();
+  updateColoresTab();
   cargarTodo();
 }
 
