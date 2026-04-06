@@ -405,16 +405,24 @@ async function cargarTodo() {
     );
     setProgress(40);
 
-    setStatus('Cargando ventas...');
-    const ventas = await fetchAll(
-      'ventas',
-      'select=id,date_sale,channel,venta_detalles(product_id,product_name,size_id,size,quantity)&date_sale=gte.2025-01-01&order=id',
-      'ventas'
-    );
+    // Vistas materializadas — reemplazan el cálculo de estadísticas mensuales y fundas
+    setStatus('Cargando estadísticas mensuales...');
+    const vmMes    = await fetchAll('ventas_por_mes',           'select=mes,channel,cantidad_ventas,total_items,promedio_items_por_venta&order=mes', 'ventas por mes');
+    setProgress(50);
+    const vmCat    = await fetchAll('ventas_por_categoria_mes', 'select=mes,categoria,total_items&order=mes',                                        'por categoría');
+    setProgress(65);
+    const vmFundas = await fetchAll('fundas_por_modelo_mes',    'select=mes,modelo,product_name,total_items&order=mes',                              'fundas');
+    setProgress(75);
+
+    // Ventas y detalles planos — para análisis por producto/variante
+    setStatus('Cargando ventas por producto...');
+    const ventas   = await fetchAll('ventas',         'select=id,date_sale&date_sale=gte.2025-01-01&order=id',                      'ventas');
+    setProgress(85);
+    const detalles = await fetchAll('venta_detalles', 'select=sale_id,product_id,size_id,product_name,size,quantity&order=sale_id', 'detalles');
     setProgress(95);
 
     const lastSync = new Date().toISOString();
-    procesarYRenderizar(productos, ventas, inventario, lastSync);
+    procesarYRenderizar(productos, ventas, detalles, inventario, vmMes, vmCat, vmFundas, lastSync);
     setProgress(100);
     setStatus('Datos actualizados.', 'ok');
   } catch(e) {
@@ -450,7 +458,7 @@ function getPhase(salesPrev, salesCurr, dsl) {
   return { label: 'declive', cls: 'badge-warning' };
 }
 
-function procesarYRenderizar(productos, ventas, inventario, lastSync) {
+function procesarYRenderizar(productos, ventas, detalles, inventario, vmMes, vmCat, vmFundas, lastSync) {
   const invByProduct = {};
   const invByVariant = {};
   (inventario || []).forEach(i => {
@@ -472,13 +480,11 @@ function procesarYRenderizar(productos, ventas, inventario, lastSync) {
 
   const vprod = {};
   const vvar = {};
-  const mStats = {};
-  const fStats = {}; // { 'YYYY-MM': { items, ventasCount, byCategory: { cat: qty }, byChannel: { ch: count } } }
   const cutoff30 = new Date(TODAY); cutoff30.setDate(cutoff30.getDate() - 30);
   const cutoff60 = new Date(TODAY); cutoff60.setDate(cutoff60.getDate() - 60);
   const cutoff90 = new Date(TODAY); cutoff90.setDate(cutoff90.getDate() - 90);
 
-  // Generar los últimos 16 meses dinámicamente
+  // Últimos 16 meses para análisis de producto y curva de vida
   const months = [];
   const cursorMonth = new Date(TODAY.getFullYear(), TODAY.getMonth(), 1);
   for (let i = 15; i >= 0; i--) {
@@ -486,52 +492,59 @@ function procesarYRenderizar(productos, ventas, inventario, lastSync) {
     months.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
   }
 
-  (ventas || []).forEach(v => {
-    const fecha = (v.date_sale || '').substring(0, 10);
+  // Mapa sale_id → date_sale para unir detalles con su fecha de venta
+  const ventasMap = {};
+  (ventas || []).forEach(v => { ventasMap[String(v.id)] = v.date_sale; });
+
+  // Análisis por producto/variante desde venta_detalles planos
+  (detalles || []).forEach(item => {
+    const fecha    = (ventasMap[String(item.sale_id)] || '').substring(0, 10);
     const fechaMes = fecha.substring(0, 7);
     const fechaObj = new Date(fecha);
-    if (fechaMes && months.includes(fechaMes)) {
-      if (!mStats[fechaMes]) mStats[fechaMes] = { items: 0, ventasCount: 0, byCategory: {}, byChannel: {} };
-      mStats[fechaMes].ventasCount++;
-      const ch = (v.channel || 'Sin canal').trim();
-      mStats[fechaMes].byChannel[ch] = (mStats[fechaMes].byChannel[ch] || 0) + 1;
-    }
-    (v.venta_detalles || []).forEach(item => {
-      const pid = String(item.product_id || '');
-      const sid = String(item.size_id || '');
-      const vid = pid + '_' + sid;
-      const qty = item.quantity || 1;
-      const name = item.product_name || '';
-      const size = item.size || '';
+    const pid  = String(item.product_id || '');
+    const sid  = String(item.size_id || '');
+    const vid  = pid + '_' + sid;
+    const qty  = item.quantity || 1;
+    const name = item.product_name || '';
+    const size = item.size || '';
 
-      if (fechaMes && months.includes(fechaMes) && mStats[fechaMes]) {
-        mStats[fechaMes].items += qty;
-        const cat = categoryByPid[pid] || 'SIN CATEGORÍA';
-        mStats[fechaMes].byCategory[cat] = (mStats[fechaMes].byCategory[cat] || 0) + qty;
-        if (cat === 'FUNDAS') {
-          const model = normalizeIphoneModel(item.size);
-          if (model) {
-            if (!fStats[fechaMes]) fStats[fechaMes] = {};
-            const fKey = model + '|||' + (item.product_name || 'Sin nombre');
-            fStats[fechaMes][fKey] = (fStats[fechaMes][fKey] || 0) + qty;
-          }
-        }
-      }
-      if (!vprod[pid]) vprod[pid] = { total: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null, name };
-      vprod[pid].total += qty;
-      vprod[pid].byMonth[fechaMes] = (vprod[pid].byMonth[fechaMes] || 0) + qty;
-      if (fechaObj >= cutoff30) vprod[pid].s30 += qty;
-      else if (fechaObj >= cutoff60) vprod[pid].s60 += qty;
-      if (fechaObj >= cutoff90) vprod[pid].s90 += qty;
-      if (!vprod[pid].last || fecha > vprod[pid].last) vprod[pid].last = fecha;
+    if (!vprod[pid]) vprod[pid] = { total: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null, name };
+    vprod[pid].total += qty;
+    vprod[pid].byMonth[fechaMes] = (vprod[pid].byMonth[fechaMes] || 0) + qty;
+    if (fechaObj >= cutoff30) vprod[pid].s30 += qty;
+    else if (fechaObj >= cutoff60) vprod[pid].s60 += qty;
+    if (fechaObj >= cutoff90) vprod[pid].s90 += qty;
+    if (!vprod[pid].last || fecha > vprod[pid].last) vprod[pid].last = fecha;
 
-      if (!vvar[vid]) vvar[vid] = { total: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null, name, size, pid, sid };
-      vvar[vid].total += qty;
-      vvar[vid].byMonth[fechaMes] = (vvar[vid].byMonth[fechaMes] || 0) + qty;
-      if (fechaObj >= cutoff30) vvar[vid].s30 += qty;
-      else if (fechaObj >= cutoff60) vvar[vid].s60 += qty;
-      if (!vvar[vid].last || fecha > vvar[vid].last) vvar[vid].last = fecha;
-    });
+    if (!vvar[vid]) vvar[vid] = { total: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null, name, size, pid, sid };
+    vvar[vid].total += qty;
+    vvar[vid].byMonth[fechaMes] = (vvar[vid].byMonth[fechaMes] || 0) + qty;
+    if (fechaObj >= cutoff30) vvar[vid].s30 += qty;
+    else if (fechaObj >= cutoff60) vvar[vid].s60 += qty;
+    if (!vvar[vid].last || fecha > vvar[vid].last) vvar[vid].last = fecha;
+  });
+
+  // Estadísticas mensuales desde vistas materializadas
+  const mStats = {};
+  (vmMes || []).forEach(row => {
+    const ms = mStats[row.mes] || (mStats[row.mes] = { mes: row.mes, items: 0, ventasCount: 0, byCategory: {}, byChannel: {} });
+    ms.items       += Number(row.total_items)    || 0;
+    ms.ventasCount += Number(row.cantidad_ventas) || 0;
+    const ch = (row.channel || 'Sin canal').trim();
+    ms.byChannel[ch] = (ms.byChannel[ch] || 0) + (Number(row.cantidad_ventas) || 0);
+  });
+  (vmCat || []).forEach(row => {
+    if (!mStats[row.mes]) mStats[row.mes] = { mes: row.mes, items: 0, ventasCount: 0, byCategory: {}, byChannel: {} };
+    mStats[row.mes].byCategory[row.categoria] = Number(row.total_items) || 0;
+  });
+
+  // Fundas por modelo desde vista materializada (clave compuesta modelo|||product_name)
+  const fStats = {};
+  (vmFundas || []).forEach(row => {
+    if (!row.modelo) return;
+    if (!fStats[row.mes]) fStats[row.mes] = {};
+    const key = row.modelo + '|||' + (row.product_name || 'Sin nombre');
+    fStats[row.mes][key] = (fStats[row.mes][key] || 0) + (Number(row.total_items) || 0);
   });
 
   allProductos = (productos || []).map(p => {
@@ -584,11 +597,13 @@ function procesarYRenderizar(productos, ventas, inventario, lastSync) {
     document.getElementById('sync-info').textContent =
       'Última actualización: ' + d.toLocaleDateString('es-AR') + ' ' +
       d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) +
-      ' — ' + ventas.length + ' ventas cargadas';
+      ' — ' + detalles.length + ' líneas de venta cargadas';
   }
 
-  allMonths = months;
-  allMonthlyStats = months.map(m => ({ mes: m, ...(mStats[m] || { items: 0, ventasCount: 0, byCategory: {} }) }));
+  // allMonths: unión de meses de vistas y últimos 16 meses, ordenados
+  const viewMeses = new Set([...Object.keys(mStats), ...Object.keys(fStats)]);
+  allMonths = [...new Set([...months, ...viewMeses])].sort();
+  allMonthlyStats = allMonths.map(m => ({ mes: m, ...(mStats[m] || { items: 0, ventasCount: 0, byCategory: {}, byChannel: {} }) }));
   allFundasStats = fStats;
 
   document.getElementById('dashboard').style.display = 'block';
