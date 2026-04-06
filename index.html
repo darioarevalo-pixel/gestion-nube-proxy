@@ -98,6 +98,7 @@
       <button class="tab" onclick="switchTab('curva', this)">Curva de vida</button>
       <button class="tab" onclick="switchTab('stock', this)">Stock vs demanda</button>
       <button class="tab" onclick="switchTab('ventas-mensuales', this)">Ventas mensuales</button>
+      <button class="tab" onclick="switchTab('fundas-modelo', this)">Fundas por modelo</button>
     </div>
 
     <div id="tab-productos" class="section visible">
@@ -213,10 +214,72 @@
         </table>
       </div>
     </div>
+
+    <div id="tab-fundas-modelo" class="section">
+      <div class="toolbar">
+        <select id="fm-mes" onchange="renderFundasPorModelo()"></select>
+      </div>
+      <div class="card">
+        <div class="chart-wrap" id="fm-chart-wrap"><canvas id="fmChart"></canvas></div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div style="padding:12px 16px 6px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;">Ranking por modelo</span>
+          <span id="fm-total" style="font-size:11px;color:#aaa;"></span>
+        </div>
+        <table>
+          <thead><tr>
+            <th style="width:32px;">#</th>
+            <th>Modelo</th>
+            <th>Vendidas</th>
+            <th>% del total</th>
+          </tr></thead>
+          <tbody id="fm-tbody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
+function normalizeIphoneModel(size) {
+  if (!size) return null;
+
+  // 1. Strip "iPhone" prefix (any capitalización: iPhone, IPhone, iphone)
+  let s = size.trim().replace(/^i?phone\s*/i, '').trim();
+
+  // 2. Strip color after " - "  (e.g. "14 Pro Max - Blanco" → "14 Pro Max")
+  s = s.split(' - ')[0].trim();
+
+  // 3. For combined models (e.g. "12 / 12 Pro", "6/6s Plus"), tomar el primer modelo
+  s = s.split('/')[0].trim();
+
+  // 4. Modelos válidos en orden de más específico a más general
+  const MODELS = [
+    ['17 pro max', '17 Pro Max'], ['17 air', '17 Air'], ['17 pro', '17 Pro'], ['17', '17'],
+    ['16 pro max', '16 Pro Max'], ['16 plus', '16 Plus'], ['16 pro', '16 Pro'], ['16e', '16e'], ['16', '16'],
+    ['15 pro max', '15 Pro Max'], ['15 plus', '15 Plus'], ['15 pro', '15 Pro'], ['15', '15'],
+    ['14 pro max', '14 Pro Max'], ['14 plus', '14 Plus'], ['14 pro', '14 Pro'], ['14', '14'],
+    ['13 pro max', '13 Pro Max'], ['13 pro', '13 Pro'], ['13', '13'],
+    ['12 pro max', '12 Pro Max'], ['12 mini', '12 Mini'], ['12 pro', '12 Pro'], ['12', '12'],
+    ['11 pro max', '11 Pro Max'], ['11 pro', '11 Pro'], ['11', '11'],
+    ['xr', 'XR'], ['xs', 'Xs'], ['x', 'X'],
+    ['8 plus', '8 Plus'], ['8', '8'],
+    ['7 plus', '7 Plus'], ['7', '7'],
+    ['6s plus', '6s Plus'], ['6 plus', '6 Plus'], ['6s', '6s'], ['6', '6'],
+  ];
+
+  // Intentar el prefijo más largo que coincida (maneja colores sin guión como "Pro Max Black")
+  const words = s.toLowerCase().trim().split(/\s+/);
+  for (let len = words.length; len >= 1; len--) {
+    const candidate = words.slice(0, len).join(' ');
+    for (const [key, canonical] of MODELS) {
+      if (candidate === key) return 'iPhone ' + canonical;
+    }
+  }
+  return null;
+}
+
 const SUPABASE_URL = 'https://srqzzffmiiescffabtlc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNycXp6ZmZtaWllc2NmZmFidGxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNzg1NDksImV4cCI6MjA5MDk1NDU0OX0.UJGWTPCXhhxv2Q-4twUBvOivPLUk0SSQvyvtEkDmWLg';
 const TODAY = new Date();
@@ -224,8 +287,8 @@ let allProductos = [], allVariantes = [];
 let sortState = { productos: { col: 'sales30', dir: -1 }, variantes: { col: 'sales30', dir: -1 } };
 let pageState = { productos: 1, variantes: 1 };
 const PAGE_SIZE = 50;
-let rankChart = null, cChart = null, sChart = null, vmChart = null;
-let allMonthlyStats = [], allMonths = [];
+let rankChart = null, cChart = null, sChart = null, vmChart = null, fmChart = null;
+let allMonthlyStats = [], allMonths = [], allFundasStats = {};
 
 function setStatus(msg, type) {
   const el = document.getElementById('status');
@@ -347,7 +410,8 @@ function procesarYRenderizar(productos, ventas, inventario, lastSync) {
 
   const vprod = {};
   const vvar = {};
-  const mStats = {}; // { 'YYYY-MM': { items, ventasCount, byCategory: { cat: qty }, byChannel: { ch: count } } }
+  const mStats = {};
+  const fStats = {}; // { 'YYYY-MM': { items, ventasCount, byCategory: { cat: qty }, byChannel: { ch: count } } }
   const cutoff30 = new Date(TODAY); cutoff30.setDate(cutoff30.getDate() - 30);
   const cutoff60 = new Date(TODAY); cutoff60.setDate(cutoff60.getDate() - 60);
   const cutoff90 = new Date(TODAY); cutoff90.setDate(cutoff90.getDate() - 90);
@@ -382,6 +446,13 @@ function procesarYRenderizar(productos, ventas, inventario, lastSync) {
         mStats[fechaMes].items += qty;
         const cat = categoryByPid[pid] || 'SIN CATEGORÍA';
         mStats[fechaMes].byCategory[cat] = (mStats[fechaMes].byCategory[cat] || 0) + qty;
+        if (cat === 'FUNDAS') {
+          const model = normalizeIphoneModel(item.size);
+          if (model) {
+            if (!fStats[fechaMes]) fStats[fechaMes] = {};
+            fStats[fechaMes][model] = (fStats[fechaMes][model] || 0) + qty;
+          }
+        }
       }
       if (!vprod[pid]) vprod[pid] = { total: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null, name };
       vprod[pid].total += qty;
@@ -455,6 +526,7 @@ function procesarYRenderizar(productos, ventas, inventario, lastSync) {
 
   allMonths = months;
   allMonthlyStats = months.map(m => ({ mes: m, ...(mStats[m] || { items: 0, ventasCount: 0, byCategory: {} }) }));
+  allFundasStats = fStats;
 
   document.getElementById('dashboard').style.display = 'block';
   setProgress(0);
@@ -464,6 +536,7 @@ function procesarYRenderizar(productos, ventas, inventario, lastSync) {
   renderCurva(months);
   renderStock();
   renderVentasMensuales();
+  renderFundasPorModelo();
 }
 
 function filtrarLista(lista, searchId, filterId) {
@@ -657,6 +730,67 @@ function renderVentasMensuales() {
       ${chCells}
     </tr>`;
   }).join('');
+}
+
+function renderFundasPorModelo() {
+  const MONTH_NAMES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  function monthLabel(m) {
+    const [y, mo] = m.split('-');
+    return MONTH_NAMES[parseInt(mo)-1] + ' ' + y.slice(2);
+  }
+
+  // Poblar selector con los meses que tienen datos de fundas (más reciente primero)
+  const sel = document.getElementById('fm-mes');
+  const mesesConDatos = [...allMonths].reverse().filter(m => allFundasStats[m]);
+  const prevVal = sel.value;
+  sel.innerHTML = mesesConDatos.map(m =>
+    `<option value="${m}">${monthLabel(m)}</option>`
+  ).join('');
+  if (prevVal && mesesConDatos.includes(prevVal)) sel.value = prevVal;
+
+  const mes = sel.value;
+  const data = allFundasStats[mes] || {};
+  const sorted = Object.entries(data).sort((a, b) => b[1] - a[1]);
+  const total = sorted.reduce((s, [, q]) => s + q, 0);
+  const top = sorted.slice(0, 20); // top 20 modelos
+
+  // Gráfico horizontal
+  const wrap = document.getElementById('fm-chart-wrap');
+  wrap.style.height = Math.max(300, top.length * 32 + 60) + 'px';
+  if (fmChart) fmChart.destroy();
+  fmChart = new Chart(document.getElementById('fmChart'), {
+    type: 'bar',
+    data: {
+      labels: top.map(([m]) => m),
+      datasets: [{ data: top.map(([, q]) => q), backgroundColor: '#7F77DD', borderRadius: 4 }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#888', font: { size: 11 } }, grid: { color: '#f0f0f0' } },
+        y: { ticks: { color: '#444', font: { size: 12 } }, grid: { display: false } }
+      }
+    }
+  });
+
+  // Tabla (todos los modelos)
+  document.getElementById('fm-tbody').innerHTML = sorted.map(([model, qty], i) => {
+    const pct = total > 0 ? ((qty / total) * 100).toFixed(1) : '0.0';
+    return `<tr>
+      <td style="color:#888;font-size:11px;width:32px;">${i + 1}</td>
+      <td style="font-weight:500;">${model}</td>
+      <td style="font-weight:600;">${qty.toLocaleString('es-AR')}</td>
+      <td style="color:#666;">
+        ${pct}%
+        <div style="display:inline-block;width:60px;height:4px;background:#e5e5e5;border-radius:2px;margin-left:6px;vertical-align:middle;">
+          <div style="width:${pct}%;height:100%;background:#7F77DD;border-radius:2px;"></div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('fm-total').textContent = total.toLocaleString('es-AR') + ' fundas vendidas · ' + sorted.length + ' modelos';
 }
 
 function switchTab(id, btn) {
