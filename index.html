@@ -603,7 +603,9 @@ async function cargarTodo(forceRefresh = false) {
       : Promise.resolve([]);
 
     const [productos, inventario, vmMes, vmCat, vmFundas, colorManual, ventas, detalles] = await Promise.all([
-      fetchAll('productos',               'select=id,name,category,sku,proveedor,retailer_price,unit_cost,created_at,active&active=eq.1&order=id', 'productos', true),
+      fetchAll('productos',               (currentCuenta === CUENTAS.zattia
+        ? 'select=id,name,category,sku,proveedor,retailer_price,unit_cost,created_at,active&active=eq.1'
+        : 'select=id,name,category,sku,retailer_price,unit_cost,created_at,active') + '&order=id', 'productos', true),
       fetchAll('inventario',              'select=product_id,product_name,size_id,size_name,available_quantity&order=product_id',       'inventario', true),
       fetchAll('ventas_por_mes',          'select=mes,channel,cantidad_ventas,total_items,promedio_items_por_venta&order=mes',          'vmMes', true),
       fetchAll('ventas_por_categoria_mes','select=mes,categoria,total_items&order=mes',                                                 'vmCat', true),
