@@ -1,0 +1,26 @@
+name: Sync diario — Zattia
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Ejecutar sync diario Zattia
+        env:
+          ZATTIA_SUPABASE_URL: ${{ secrets.ZATTIA_SUPABASE_URL }}
+          ZATTIA_SUPABASE_KEY: ${{ secrets.ZATTIA_SUPABASE_KEY }}
+          GN_TOKEN_ZATTIA: ${{ secrets.GN_TOKEN_ZATTIA }}
+        run: node scripts/sync-diario-zattia.js
