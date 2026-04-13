@@ -606,7 +606,7 @@ function loadCache() {
     if (!raw) return null;
     const cached = JSON.parse(raw);
     const age = Date.now() - cached.timestamp;
-    if (age > 30 * 60 * 1000) return null; // expirado >30 min
+    if (age > 6 * 60 * 60 * 1000) return null; // expirado >6h
     return cached;
   } catch { return null; }
 }
@@ -642,7 +642,7 @@ async function cargarTodo(forceRefresh = false) {
     }
   }
 
-  // ── Fetch en paralelo ─────────────────────────────────────────────────────
+  // ── Fetch en dos fases ────────────────────────────────────────────────────
   try {
     setProgress(10);
     setStatus('Descargando datos...');
@@ -651,7 +651,8 @@ async function cargarTodo(forceRefresh = false) {
       ? sbFetch('variante_color_manual', 'select=product_name,color').catch(() => [])
       : Promise.resolve([]);
 
-    const [productos, inventario, vmMes, vmCat, vmFundas, colorManual, ventas, detalles] = await Promise.all([
+    // Fase 1: tablas rápidas + ventas (para filtrar detalles por sale_id)
+    const [productos, inventario, vmMes, vmCat, vmFundas, colorManual, ventas] = await Promise.all([
       fetchAll('productos',               (currentCuenta === CUENTAS.zattia
         ? 'select=id,name,category,sku,proveedor,retailer_price,unit_cost,created_at,active&active=eq.1'
         : 'select=id,name,category,sku,retailer_price,unit_cost,created_at,active') + '&order=id', 'productos', true),
@@ -660,12 +661,25 @@ async function cargarTodo(forceRefresh = false) {
       fetchAll('ventas_por_categoria_mes','select=mes,categoria,total_items&order=mes',                                                 'vmCat', true),
       fetchAll('fundas_por_modelo_mes',   'select=mes,modelo,product_name,total_items&order=mes',                                       'vmFundas', true),
       colorManualPromise,
-      fetchAll('ventas',         'select=id,date_sale&date_sale=gte.2025-01-01&order=id',                      'ventas', true),
-      fetchAll('venta_detalles', 'select=sale_id,product_id,size_id,product_name,size,quantity&order=sale_id', 'detalles', true),
+      fetchAll('ventas',                  'select=id,date_sale&date_sale=gte.2025-01-01&order=id',                                      'ventas', true),
     ]);
 
     colorManualMap = {};
     (colorManual || []).forEach(r => { colorManualMap[r.product_name] = r.color; });
+
+    // Mostrar dashboard con datos de fase 1 (sin detalles aún)
+    setProgress(60);
+    procesarYRenderizar(productos, ventas, [], inventario, vmMes, vmCat, vmFundas, null);
+    document.getElementById('dashboard').style.display = 'block';
+    setStatus('Cargando historial de ventas...', 'loading');
+
+    // Fase 2: detalles filtrados solo por el rango de ventas que ya tenemos
+    const minSaleId = ventas.length ? Math.min(...ventas.map(v => v.id)) : 0;
+    const detalles = await fetchAll(
+      'venta_detalles',
+      `select=sale_id,product_id,size_id,product_name,size,quantity&sale_id=gte.${minSaleId}&order=sale_id`,
+      'detalles', true
+    );
 
     const timestamp = Date.now();
     saveCache({ productos, inventario, vmMes, vmCat, vmFundas, colorManual, ventas, detalles }, timestamp);
