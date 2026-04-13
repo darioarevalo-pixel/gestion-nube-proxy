@@ -603,7 +603,7 @@ async function cargarTodo(forceRefresh = false) {
       : Promise.resolve([]);
 
     const [productos, inventario, vmMes, vmCat, vmFundas, colorManual, ventas, detalles] = await Promise.all([
-      fetchAll('productos',               'select=id,name,category,sku,proveedor,retailer_price,unit_cost,created_at,active&order=id', 'productos', true),
+      fetchAll('productos',               'select=id,name,category,sku,proveedor,retailer_price,unit_cost,created_at,active&active=eq.1&order=id', 'productos', true),
       fetchAll('inventario',              'select=product_id,product_name,size_id,size_name,available_quantity&order=product_id',       'inventario', true),
       fetchAll('ventas_por_mes',          'select=mes,channel,cantidad_ventas,total_items,promedio_items_por_venta&order=mes',          'vmMes', true),
       fetchAll('ventas_por_categoria_mes','select=mes,categoria,total_items&order=mes',                                                 'vmCat', true),
@@ -793,7 +793,9 @@ function procesarYRenderizar(productos, ventas, detalles, inventario, vmMes, vmC
     variantesMap[vid].stock += (i.available_quantity || 0);
   });
 
-  allVariantes = Object.values(variantesMap).map(v => {
+  const activeProductIds = new Set(allProductos.map(p => p.id));
+
+  allVariantes = Object.values(variantesMap).filter(v => activeProductIds.has(v.pid)).map(v => {
     const d = vvar[v.id] || { total: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null };
     const dsl = d.last ? daysSince(d.last) : 999;
     const ls = lifespanDays(v.stock, d.s30);
