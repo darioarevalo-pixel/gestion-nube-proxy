@@ -121,7 +121,7 @@
 
   <div class="card">
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-      <button class="btn-primary" onclick="cargarTodo()">Actualizar datos</button>
+      <button class="btn-primary" onclick="cargarTodo(true)">Actualizar datos</button>
     </div>
     <div class="progress-bar" id="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
     <div id="status"></div>
@@ -533,62 +533,94 @@ async function sbFetch(table, params) {
   return res.json();
 }
 
-async function fetchAll(table, baseParams, label) {
+async function fetchAll(table, baseParams, label, silent = false) {
   const results = [];
   let offset = 0;
   const batchSize = 1000;
   while (true) {
     const data = await sbFetch(table, `${baseParams}&limit=${batchSize}&offset=${offset}`);
     results.push(...data);
-    setStatus(`Cargando ${label}... ${results.length}`);
+    if (!silent) setStatus(`Cargando ${label}... ${results.length}`);
     if (data.length < batchSize) break;
     offset += batchSize;
   }
   return results;
 }
 
-async function cargarTodo() {
+function getCacheKey() {
+  return 'monitor_v1_' + (currentCuenta === CUENTAS.zattia ? 'zattia' : 'bdi');
+}
+
+function loadCache() {
   try {
-    setProgress(5);
-    setStatus('Cargando productos...');
-    const productos = await fetchAll('productos', 'select=id,name,category,sku,proveedor,retailer_price,unit_cost,created_at,active&order=id', 'productos');
-    setProgress(15);
+    const raw = localStorage.getItem(getCacheKey());
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    const age = Date.now() - cached.timestamp;
+    if (age > 30 * 60 * 1000) return null; // expirado >30 min
+    return cached;
+  } catch { return null; }
+}
 
-    setStatus('Cargando inventario...');
-    const inventario = await fetchAll(
-      'inventario',
-      'select=product_id,product_name,size_id,size_name,available_quantity&order=product_id',
-      'inventario'
-    );
-    setProgress(40);
-
-    // Vistas materializadas — reemplazan el cálculo de estadísticas mensuales y fundas
-    setStatus('Cargando estadísticas mensuales...');
-    const vmMes    = await fetchAll('ventas_por_mes',           'select=mes,channel,cantidad_ventas,total_items,promedio_items_por_venta&order=mes', 'ventas por mes');
-    setProgress(50);
-    const vmCat    = await fetchAll('ventas_por_categoria_mes', 'select=mes,categoria,total_items&order=mes',                                        'por categoría');
-    setProgress(65);
-    const vmFundas = await fetchAll('fundas_por_modelo_mes',    'select=mes,modelo,product_name,total_items&order=mes',                              'fundas');
-    setProgress(75);
-
-    // Mapeo manual de colores para productos con Variante Única (solo Zattia)
-    colorManualMap = {};
-    if (currentCuenta === CUENTAS.zattia) {
-      try {
-        const cmRows = await sbFetch('variante_color_manual', 'select=product_name,color');
-        (cmRows || []).forEach(r => { colorManualMap[r.product_name] = r.color; });
-      } catch { /* tabla no disponible */ }
+function saveCache(data, timestamp) {
+  try {
+    const payload = JSON.stringify({ timestamp, data });
+    if (payload.length < 8 * 1024 * 1024) { // máx 8MB
+      localStorage.setItem(getCacheKey(), payload);
     }
+  } catch { /* localStorage lleno, ignorar */ }
+}
 
-    // Ventas y detalles planos — para análisis por producto/variante
-    setStatus('Cargando ventas por producto...');
-    const ventas   = await fetchAll('ventas',         'select=id,date_sale&date_sale=gte.2025-01-01&order=id',                      'ventas');
-    setProgress(85);
-    const detalles = await fetchAll('venta_detalles', 'select=sale_id,product_id,size_id,product_name,size,quantity&order=sale_id', 'detalles');
+async function cargarTodo(forceRefresh = false) {
+  // ── Intentar desde caché ──────────────────────────────────────────────────
+  if (!forceRefresh) {
+    const cached = loadCache();
+    if (cached) {
+      const ageMin = Math.round((Date.now() - cached.timestamp) / 60000);
+      setStatus(`Cargando desde caché...`);
+      colorManualMap = {};
+      (cached.data.colorManual || []).forEach(r => { colorManualMap[r.product_name] = r.color; });
+      procesarYRenderizar(
+        cached.data.productos, cached.data.ventas, cached.data.detalles,
+        cached.data.inventario, cached.data.vmMes, cached.data.vmCat,
+        cached.data.vmFundas, new Date(cached.timestamp).toISOString()
+      );
+      document.getElementById('dashboard').style.display = 'block';
+      setStatus(`Caché de hace ${ageMin} min — `, 'ok');
+      document.getElementById('status').innerHTML +=
+        `<a href="#" onclick="cargarTodo(true);return false;" style="color:#378ADD;font-size:12px;">Actualizar ahora</a>`;
+      return;
+    }
+  }
+
+  // ── Fetch en paralelo ─────────────────────────────────────────────────────
+  try {
+    setProgress(10);
+    setStatus('Descargando datos...');
+
+    const colorManualPromise = currentCuenta === CUENTAS.zattia
+      ? sbFetch('variante_color_manual', 'select=product_name,color').catch(() => [])
+      : Promise.resolve([]);
+
+    const [productos, inventario, vmMes, vmCat, vmFundas, colorManual, ventas, detalles] = await Promise.all([
+      fetchAll('productos',               'select=id,name,category,sku,proveedor,retailer_price,unit_cost,created_at,active&order=id', 'productos', true),
+      fetchAll('inventario',              'select=product_id,product_name,size_id,size_name,available_quantity&order=product_id',       'inventario', true),
+      fetchAll('ventas_por_mes',          'select=mes,channel,cantidad_ventas,total_items,promedio_items_por_venta&order=mes',          'vmMes', true),
+      fetchAll('ventas_por_categoria_mes','select=mes,categoria,total_items&order=mes',                                                 'vmCat', true),
+      fetchAll('fundas_por_modelo_mes',   'select=mes,modelo,product_name,total_items&order=mes',                                       'vmFundas', true),
+      colorManualPromise,
+      fetchAll('ventas',         'select=id,date_sale&date_sale=gte.2025-01-01&order=id',                      'ventas', true),
+      fetchAll('venta_detalles', 'select=sale_id,product_id,size_id,product_name,size,quantity&order=sale_id', 'detalles', true),
+    ]);
+
+    colorManualMap = {};
+    (colorManual || []).forEach(r => { colorManualMap[r.product_name] = r.color; });
+
+    const timestamp = Date.now();
+    saveCache({ productos, inventario, vmMes, vmCat, vmFundas, colorManual, ventas, detalles }, timestamp);
+
     setProgress(95);
-
-    const lastSync = new Date().toISOString();
-    procesarYRenderizar(productos, ventas, detalles, inventario, vmMes, vmCat, vmFundas, lastSync);
+    procesarYRenderizar(productos, ventas, detalles, inventario, vmMes, vmCat, vmFundas, new Date(timestamp).toISOString());
     setProgress(100);
     setStatus('Datos actualizados.', 'ok');
   } catch(e) {
