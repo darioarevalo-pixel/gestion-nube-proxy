@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BDI Monitor</title>
+  <title>Monitor AREBEN SRL</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -137,7 +137,7 @@
 
 <div id="login-screen">
   <div class="login-card">
-    <div class="login-brand">BDI <span>Monitor</span></div>
+    <div class="login-brand">AREBEN <span>SRL</span></div>
     <div class="login-sub">Panel de análisis de ventas</div>
     <div class="login-field">
       <label>Empresa</label>
@@ -162,7 +162,7 @@
 <div class="container">
   <div class="header-bar">
     <div>
-      <h1>BDI Monitor</h1>
+      <h1>Monitor AREBEN SRL</h1>
       <p class="subtitle">Análisis de ventas e inventario</p>
     </div>
     <div class="user-info" id="user-info"></div>
@@ -193,7 +193,7 @@
       <button class="tab" onclick="switchTab('curva', this)">Curva de vida</button>
       <button class="tab" onclick="switchTab('stock', this)">Stock vs demanda</button>
       <button class="tab" onclick="switchTab('ventas-mensuales', this)">Ventas mensuales</button>
-      <button class="tab" onclick="switchTab('fundas-modelo', this)">Fundas por modelo</button>
+      <button class="tab" id="tab-btn-fundas-modelo" onclick="switchTab('fundas-modelo', this)">Fundas por modelo</button>
       <button class="tab" id="tab-btn-proveedores" style="display:none;" onclick="switchTab('proveedores', this)">Proveedores</button>
       <button class="tab" id="tab-btn-colores" style="display:none;" onclick="switchTab('colores', this)">Colores</button>
       <button class="tab" id="tab-btn-talles" style="display:none;" onclick="switchTab('talles', this)">Talles</button>
@@ -1466,6 +1466,7 @@ function renderFundasPorModelo() {
 function updateProveedoresTab() {
   const isZattia = currentCuenta === CUENTAS.zattia;
   document.getElementById('tab-btn-proveedores').style.display = isZattia ? '' : 'none';
+  document.getElementById('tab-btn-fundas-modelo').style.display = isZattia ? 'none' : '';
   if (isZattia) {
     renderProveedoresComparativa();
     initProveedorSelector();
