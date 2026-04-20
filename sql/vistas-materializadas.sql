@@ -129,7 +129,9 @@ CREATE MATERIALIZED VIEW fundas_por_modelo_mes AS
 SELECT
   to_char(v.date_sale::date, 'YYYY-MM')      AS mes,
   normalize_iphone_model(d.size)             AS modelo,
+  d.product_id,
   d.product_name,
+  min(p.created_at)                          AS product_created_at,
   sum(d.quantity)                            AS total_items
 FROM ventas v
 JOIN venta_detalles d ON d.sale_id = v.id
@@ -137,11 +139,12 @@ LEFT JOIN productos p ON p.id = d.product_id
 WHERE v.date_sale IS NOT NULL
   AND upper(trim(p.category)) IN ('FUNDAS', 'MAYORISTA', 'MINORISTA')
   AND normalize_iphone_model(d.size) IS NOT NULL
-GROUP BY mes, modelo, d.product_name
+GROUP BY mes, modelo, d.product_id, d.product_name
 ORDER BY mes, total_items DESC;
 
 CREATE INDEX ON fundas_por_modelo_mes (mes);
 CREATE INDEX ON fundas_por_modelo_mes (modelo);
+CREATE INDEX ON fundas_por_modelo_mes (product_id);
 
 
 -- ── RPC: refresco de las tres vistas ─────────────────────────────────────────

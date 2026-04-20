@@ -806,7 +806,7 @@ async function cargarTodo(forceRefresh = false) {
       fetchAll('inventario',              'select=product_id,product_name,size_id,size_name,available_quantity&order=product_id',       'inventario', true),
       fetchAll('ventas_por_mes',          'select=mes,channel,cantidad_ventas,total_items,promedio_items_por_venta&order=mes',          'vmMes', true),
       fetchAll('ventas_por_categoria_mes','select=mes,categoria,total_items&order=mes',                                                 'vmCat', true),
-      fetchAll('fundas_por_modelo_mes',   'select=mes,modelo,product_name,total_items&order=mes',                                       'vmFundas', true),
+      fetchAll('fundas_por_modelo_mes',   'select=mes,modelo,product_id,product_name,product_created_at,total_items&order=mes',        'vmFundas', true),
       colorManualPromise,
       fetchAll('ventas',                  'select=id,date_sale&date_sale=gte.2025-01-01&order=id',                                      'ventas', true),
     ]);
@@ -948,12 +948,17 @@ function procesarYRenderizar(productos, ventas, detalles, inventario, vmMes, vmC
 
   // Fundas por modelo desde vista materializada (clave compuesta modelo|||product_name)
   const fStats = {};
+  const fProdCreatedAt = {}; // product_name → product_created_at (YYYY-MM-DD)
   (vmFundas || []).forEach(row => {
     if (!row.modelo) return;
     if (!fStats[row.mes]) fStats[row.mes] = {};
     const key = row.modelo + '|||' + (row.product_name || 'Sin nombre');
     fStats[row.mes][key] = (fStats[row.mes][key] || 0) + (Number(row.total_items) || 0);
+    if (row.product_created_at && row.product_name && !fProdCreatedAt[row.product_name]) {
+      fProdCreatedAt[row.product_name] = row.product_created_at.substring(0, 10);
+    }
   });
+  window._fmProdCreatedAt = fProdCreatedAt;
 
   allProductos = (productos || []).map(p => {
     const pid = String(p.id);
@@ -1512,9 +1517,7 @@ function rebuildFundaProds(init = false) {
   if (sort === 'alpha') {
     entries.sort((a, b) => a[0].localeCompare(b[0], 'es', { sensitivity: 'base' }));
   } else if (sort === 'date') {
-    // Buscar created_at en allProductos por nombre
-    const dateByName = {};
-    (allProductos || []).forEach(p => { if (p.name) dateByName[p.name] = p.ingresoMes || ''; });
+    const dateByName = window._fmProdCreatedAt || {};
     entries.sort((a, b) => {
       const da = dateByName[a[0]] || '';
       const db = dateByName[b[0]] || '';
