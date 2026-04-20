@@ -131,6 +131,84 @@
     .user-info { font-size: 12px; color: #9CA3AF; display: flex; align-items: center; gap: 6px; }
     .user-info select { font-size: 12px; padding: 4px 8px; border-radius: 8px; border-color: #E5E7EB; color: #6B7280; }
     .user-info button { font-size: 11px; padding: 4px 10px; color: #9CA3AF; border-radius: 8px; }
+
+    /* ── Catálogo Admin ── */
+    #tab-catalogo { font-family: 'Inter', sans-serif; }
+    #tab-catalogo .cat-auth-box { background:#fff; border:1.5px solid #E5E7EB; border-radius:16px; padding:28px; max-width:340px; margin:48px auto; box-shadow:0 4px 20px rgba(99,102,241,.07); }
+    #tab-catalogo .cat-auth-box h3 { font-size:15px; font-weight:700; margin-bottom:4px; }
+    #tab-catalogo .cat-auth-box p { font-size:12px; color:#9CA3AF; margin-bottom:20px; }
+    #tab-catalogo .cat-auth-box input { width:100%; padding:9px 12px; border:1.5px solid #E5E7EB; border-radius:10px; font-family:inherit; font-size:14px; margin-bottom:10px; outline:none; }
+    #tab-catalogo .cat-auth-box input:focus { border-color:#6366F1; }
+    #tab-catalogo .cat-auth-err { font-size:12px; color:#EF4444; margin-top:6px; display:none; }
+    #tab-catalogo .cat-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px; }
+    #tab-catalogo .cat-header h2 { font-size:16px; font-weight:700; }
+    #tab-catalogo .cat-subtabs { display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+    #tab-catalogo .cat-subtab { padding:7px 18px; border-radius:99px; border:1.5px solid #E5E7EB; font-size:13px; cursor:pointer; background:#fff; color:#6B7280; font-weight:500; transition:all .15s; }
+    #tab-catalogo .cat-subtab:hover { border-color:#A5B4FC; color:#4338CA; background:#EEF2FF; }
+    #tab-catalogo .cat-subtab.active { background:#6366F1; color:#fff; border-color:#6366F1; font-weight:600; box-shadow:0 2px 10px rgba(99,102,241,.35); }
+    #tab-catalogo .cat-toolbar { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+    #tab-catalogo .cat-toolbar input[type=text] { flex:1; min-width:180px; padding:8px 12px; border:1.5px solid #E5E7EB; border-radius:10px; font-size:13px; font-family:inherit; outline:none; }
+    #tab-catalogo .cat-toolbar input:focus { border-color:#6366F1; }
+    #tab-catalogo .cat-toolbar select { padding:7px 10px; border:1.5px solid #E5E7EB; border-radius:10px; font-size:13px; background:#fff; outline:none; font-family:inherit; }
+    #tab-catalogo .cat-note { font-size:12px; color:#9CA3AF; margin-bottom:12px; line-height:1.5; }
+    #tab-catalogo #cat-products-list { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+    @media (max-width:1200px) { #tab-catalogo #cat-products-list { grid-template-columns:repeat(4,1fr); } }
+    @media (max-width:900px) { #tab-catalogo #cat-products-list { grid-template-columns:repeat(3,1fr); } }
+    @media (max-width:600px) { #tab-catalogo #cat-products-list { grid-template-columns:repeat(2,1fr); } }
+    #tab-catalogo .cat-prod-card { background:#fff; border:1.5px solid #E5E7EB; border-radius:10px; overflow:hidden; transition:opacity .15s; }
+    #tab-catalogo .cat-prod-card[draggable=true] { cursor:grab; }
+    #tab-catalogo .cat-prod-card[draggable=true]:active { cursor:grabbing; }
+    #tab-catalogo .cat-prod-card.dragging { opacity:0.4; }
+    #tab-catalogo .cat-prod-card.drag-over { border-color:#6366F1; box-shadow:0 0 0 2px rgba(99,102,241,.2); }
+    #tab-catalogo .cat-prod-card-hdr { display:flex; align-items:center; gap:6px; padding:7px 8px 5px; flex-wrap:wrap; }
+    #tab-catalogo .cat-prod-card-body { padding:0 8px 7px; }
+    #tab-catalogo .cat-prod-name { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #tab-catalogo .cat-prod-card.hidden-prod .cat-prod-name { color:#9CA3AF; text-decoration:line-through; }
+    #tab-catalogo .cat-prod-catname { font-size:10px; color:#9CA3AF; margin-top:1px; }
+    #tab-catalogo .cat-expand-btn { font-size:10px; color:#9CA3AF; background:#F9FAFB; border:1px solid #E5E7EB; cursor:pointer; padding:2px 6px; border-radius:20px; white-space:nowrap; font-family:inherit; transition:color .12s; flex-shrink:0; margin-left:auto; }
+    #tab-catalogo .cat-expand-btn:hover { color:#111; border-color:#D1D5DB; }
+    #tab-catalogo .cat-toggle { width:36px; height:20px; border-radius:10px; background:#D1D5DB; border:none; cursor:pointer; position:relative; flex-shrink:0; transition:background .2s; }
+    #tab-catalogo .cat-toggle.on { background:#10B981; }
+    #tab-catalogo .cat-toggle::after { content:''; position:absolute; left:2px; top:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:left .2s; box-shadow:0 1px 2px rgba(0,0,0,.2); }
+    #tab-catalogo .cat-toggle.on::after { left:18px; }
+    #tab-catalogo .cat-var-rows { border-top:1px solid #F3F4F6; background:#F9FAFB; padding:6px 14px 6px 20px; display:none; }
+    #tab-catalogo .cat-var-rows.open { display:block; }
+    #tab-catalogo .cat-var-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid #F3F4F6; }
+    #tab-catalogo .cat-var-row:last-child { border-bottom:none; }
+    #tab-catalogo .cat-var-name { flex:1; font-size:12px; }
+    #tab-catalogo .cat-var-row.hidden-var .cat-var-name { color:#9CA3AF; text-decoration:line-through; }
+    #tab-catalogo .cat-pos-input { width:52px; text-align:center; border:1px solid #D1D5DB; border-radius:3px; font-family:monospace; font-size:12px; color:#111; background:#F9FAFB; padding:2px 4px; height:24px; outline:none; flex-shrink:0; }
+    #tab-catalogo .cat-pos-input:focus { border-color:#6366F1; background:#fff; }
+    #tab-catalogo .cat-move-btns { display:flex; flex-direction:column; gap:1px; flex-shrink:0; }
+    #tab-catalogo .cat-move-btn { width:22px; height:18px; border:1px solid #D1D5DB; border-radius:3px; background:#F9FAFB; cursor:pointer; font-size:10px; color:#6B7280; display:flex; align-items:center; justify-content:center; padding:0; transition:background .1s; line-height:1; }
+    #tab-catalogo .cat-move-btn:hover { background:#6366F1; color:#fff; border-color:#6366F1; }
+    #tab-catalogo .cat-drag-handle { cursor:grab; color:#9CA3AF; font-size:16px; padding:2px 4px; user-select:none; flex-shrink:0; }
+    #tab-catalogo .cat-drag-handle:active { cursor:grabbing; }
+    #tab-catalogo .cat-section-cat { margin-bottom:6px; }
+    #tab-catalogo .cat-section-cat.drag-over > .cat-cat-row { border-color:#6366F1; }
+    #tab-catalogo .cat-section-cat.dragging { opacity:0.45; }
+    #tab-catalogo .cat-cat-row { background:#fff; border:1.5px solid #E5E7EB; border-radius:10px; display:flex; align-items:center; gap:10px; padding:10px 14px; }
+    #tab-catalogo .cat-section-cat .cat-cat-row { border-radius:10px 10px 0 0; border-bottom:none; }
+    #tab-catalogo .cat-section-cat .cat-cat-row.collapsed { border-radius:10px; border-bottom:1.5px solid #E5E7EB; }
+    #tab-catalogo .cat-cat-name { flex:1; font-size:14px; font-weight:500; }
+    #tab-catalogo .cat-cat-name.hidden { color:#9CA3AF; text-decoration:line-through; }
+    #tab-catalogo .cat-cat-count { font-size:11px; color:#9CA3AF; }
+    #tab-catalogo .cat-cat-products { border:1.5px solid #E5E7EB; border-top:none; border-radius:0 0 10px 10px; background:#F9FAFB; padding:6px 10px 10px; }
+    #tab-catalogo .cat-cat-prod-row { display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid #E5E7EB; border-radius:10px; padding:8px 12px; margin-bottom:4px; cursor:grab; transition:box-shadow .15s,opacity .15s; }
+    #tab-catalogo .cat-cat-prod-row:last-child { margin-bottom:0; }
+    #tab-catalogo .cat-cat-prod-row.dragging { opacity:0.4; }
+    #tab-catalogo .cat-cat-prod-row.drag-over { border-color:#6366F1; box-shadow:0 0 0 2px rgba(99,102,241,.2); }
+    #tab-catalogo .cat-cat-prod-name { flex:1; font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #tab-catalogo .cat-cat-prod-pos { font-size:11px; color:#9CA3AF; font-family:monospace; flex-shrink:0; width:20px; text-align:right; }
+    #tab-catalogo .cat-setting-row { background:#fff; border:1.5px solid #E5E7EB; border-radius:10px; padding:14px 16px; display:flex; align-items:center; gap:16px; margin-bottom:8px; }
+    #tab-catalogo .cat-setting-info { flex:1; }
+    #tab-catalogo .cat-setting-label { font-size:14px; font-weight:500; }
+    #tab-catalogo .cat-setting-desc { font-size:12px; color:#9CA3AF; margin-top:2px; }
+    #tab-catalogo .cat-loading { text-align:center; padding:3rem; color:#9CA3AF; font-size:13px; }
+    #tab-catalogo .cat-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(10px); background:#111827; color:#fff; padding:10px 18px; border-radius:12px; font-size:13px; font-weight:500; opacity:0; transition:opacity .2s,transform .2s; pointer-events:none; z-index:500; }
+    #tab-catalogo .cat-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    #tab-catalogo .cat-toast.success { background:#10B981; }
+    #tab-catalogo .cat-toast.error { background:#EF4444; }
   </style>
 </head>
 <body>
@@ -197,6 +275,7 @@
       <button class="tab" id="tab-btn-proveedores" style="display:none;" onclick="switchTab('proveedores', this)">Proveedores</button>
       <button class="tab" id="tab-btn-colores" style="display:none;" onclick="switchTab('colores', this)">Colores</button>
       <button class="tab" id="tab-btn-talles" style="display:none;" onclick="switchTab('talles', this)">Talles</button>
+      <button class="tab" id="tab-btn-catalogo" style="display:none;" onclick="switchTab('catalogo', this)">Catálogo Admin</button>
     </div>
 
     <div id="tab-productos" class="section visible">
@@ -490,6 +569,69 @@
           <tbody id="col-tbody"></tbody>
         </table>
       </div>
+    </div>
+
+    <div id="tab-catalogo" class="section">
+      <!-- Auth inline -->
+      <div id="cat-auth-wrap">
+        <div class="cat-auth-box">
+          <h3>Catálogo Admin — BDI Accesorios</h3>
+          <p>Ingresá la contraseña del administrador del catálogo</p>
+          <input type="password" id="cat-pwd-input" placeholder="Contraseña" onkeydown="if(event.key==='Enter')catLogin()" />
+          <button class="btn-primary" style="width:100%;padding:10px;" id="cat-login-btn" onclick="catLogin()">Ingresar</button>
+          <div class="cat-auth-err" id="cat-auth-err">Contraseña incorrecta</div>
+        </div>
+      </div>
+
+      <!-- Panel (hidden until authenticated) -->
+      <div id="cat-panel" style="display:none">
+        <div class="cat-header">
+          <h2>Catálogo BDI Accesorios</h2>
+          <button class="btn-primary" id="cat-btn-save" onclick="catGuardarConfig()">Guardar cambios</button>
+        </div>
+        <div class="cat-subtabs">
+          <button class="cat-subtab active" onclick="catSetTab('products',this)">Productos</button>
+          <button class="cat-subtab" onclick="catSetTab('categories',this)">Categorías</button>
+          <button class="cat-subtab" onclick="catSetTab('settings',this)">Configuración</button>
+        </div>
+
+        <div id="cat-tab-products">
+          <p class="cat-note">Arrastrá los productos para definir el orden. Con filtro activo no se guarda el orden.</p>
+          <div class="cat-toolbar">
+            <input type="text" id="cat-search" placeholder="Buscar producto..." oninput="catRenderProductList()" />
+            <select id="cat-cat-filter" onchange="catRenderProductList()">
+              <option value="">Todas las categorías</option>
+            </select>
+          </div>
+          <div id="cat-products-list"><div class="cat-loading">Cargando productos...</div></div>
+        </div>
+
+        <div id="cat-tab-categories" style="display:none">
+          <p class="cat-note">Arrastrá las categorías para definir el orden. Dentro de cada una podés ordenar los productos.</p>
+          <div id="cat-categories-list"><div class="cat-loading">Cargando...</div></div>
+        </div>
+
+        <div id="cat-tab-settings" style="display:none">
+          <div class="cat-setting-row">
+            <div class="cat-setting-info">
+              <div class="cat-setting-label">Ocultar productos sin stock</div>
+              <div class="cat-setting-desc">Los productos sin stock no se muestran en el catálogo.</div>
+            </div>
+            <button class="cat-toggle" id="cat-toggle-no-stock" onclick="catToggleSetting('hideNoStock')"></button>
+          </div>
+          <div class="cat-setting-row" style="flex-wrap:wrap;gap:8px">
+            <div class="cat-setting-info">
+              <div class="cat-setting-label">Compra mínima</div>
+              <div class="cat-setting-desc">Monto mínimo para confirmar un pedido. 0 = desactivado.</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:14px;color:#9CA3AF">$</span>
+              <input type="number" id="cat-input-min-purchase" min="0" step="1000" style="width:130px;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:10px;font-family:inherit;font-size:14px;outline:none" oninput="catConfig.minPurchase=parseInt(this.value)||0" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cat-toast" id="cat-toast"></div>
     </div>
   </div>
 </div>
@@ -1893,6 +2035,7 @@ function doLogin() {
     currentCuenta = CUENTAS[empresa];
     document.getElementById('login-screen').classList.add('hidden');
     renderUserInfo();
+    updateCatalogoTab();
     cargarTodo();
   } else {
     document.getElementById('login-error').textContent = 'Usuario o contraseña incorrectos.';
@@ -1913,7 +2056,13 @@ function cambiarEmpresa(empresaKey) {
   updateProveedoresTab();
   updateColoresTab();
   updateTallesTab();
+  updateCatalogoTab();
   cargarTodo();
+}
+
+function updateCatalogoTab() {
+  const isBDI = currentCuenta === CUENTAS.bdi;
+  document.getElementById('tab-btn-catalogo').style.display = isBDI ? '' : 'none';
 }
 
 function doLogout() {
@@ -1927,6 +2076,391 @@ function doLogout() {
 }
 
 window.onload = () => document.getElementById('login-user').focus();
+
+// ── Catálogo Admin ────────────────────────────────────────────────────────────
+const CAT_API = 'https://bdi-catalogo.vercel.app';
+const CAT_ALL_KEY = '__todas__';
+let catAllProducts = [];
+let catConfig = { hiddenProducts: [], hiddenVariants: {}, hiddenCategories: [], categoryOrder: [], productOrder: {}, hideNoStock: false, minPurchase: 0 };
+let catAdminPassword = '';
+let catLoaded = false;
+
+function $cat(id) { return document.getElementById(id); }
+
+function catShowToast(msg, type = '', dur = 2800) {
+  const t = $cat('cat-toast');
+  t.textContent = msg;
+  t.className = 'cat-toast show ' + type;
+  setTimeout(() => t.className = 'cat-toast', dur);
+}
+
+async function catLogin() {
+  const pwd = $cat('cat-pwd-input').value.trim();
+  if (!pwd) return;
+  const btn = $cat('cat-login-btn');
+  btn.disabled = true; btn.textContent = 'Verificando...';
+  $cat('cat-auth-err').style.display = 'none';
+  try {
+    const r = await fetch(CAT_API + '/api/config?verify=1', { headers: { 'x-admin-password': pwd } });
+    if (r.status === 401) {
+      $cat('cat-auth-err').style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Ingresar'; return;
+    }
+    const loaded = await r.json();
+    catConfig = { hiddenProducts: [], hiddenVariants: {}, hiddenCategories: [], categoryOrder: [], productOrder: {}, hideNoStock: false, minPurchase: 0, ...loaded };
+    catAdminPassword = pwd;
+    $cat('cat-auth-wrap').style.display = 'none';
+    $cat('cat-panel').style.display = 'block';
+    if (!catLoaded) { catLoaded = true; await catCargarProductos(); }
+  } catch (e) {
+    catShowToast('Error de conexión', 'error');
+    btn.disabled = false; btn.textContent = 'Ingresar';
+  }
+}
+
+async function catCargarProductos() {
+  const seen = new Set(); const all = [];
+  let page = 1;
+  while (true) {
+    const qs = 'per_page=100&include_stock=1&include_variants=1&page=' + page;
+    const r = await fetch(CAT_API + '/api/proxy?_path=/productos/obtener&' + qs);
+    const data = await r.json();
+    const raw = Array.isArray(data) ? data : (data.data || data.products || data.items || []);
+    for (const p of raw) {
+      const id = p.id || p.product_id;
+      if (seen.has(id) || p.active === 0) continue;
+      seen.add(id); all.push(p);
+    }
+    const lastPage = data.meta ? (data.meta.last_page || 1) : 1;
+    if (page >= lastPage || raw.length < 100) break;
+    page++;
+  }
+  catAllProducts = all;
+  const allCats = [...new Set(all.map(p => p.category || '').filter(Boolean).sort())];
+  if (!catConfig.categoryOrder?.length) catConfig.categoryOrder = allCats;
+  else {
+    const newCats = allCats.filter(c => !catConfig.categoryOrder.includes(c));
+    catConfig.categoryOrder = [...catConfig.categoryOrder, ...newCats];
+  }
+  const sel = $cat('cat-cat-filter');
+  allCats.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c; sel.appendChild(opt);
+  });
+  catRenderProductList();
+  catRenderCategoryList();
+}
+
+function catIsHidden(id) { return catConfig.hiddenProducts.some(x => x == id); }
+function catIsCatHidden(cat) { return (catConfig.hiddenCategories || []).includes(cat); }
+function catIsVarHidden(pid, vid) { return ((catConfig.hiddenVariants || {})[String(pid)] || []).some(x => x == vid); }
+
+function catToggleProduct(id) {
+  const idx = catConfig.hiddenProducts.findIndex(x => x == id);
+  if (idx >= 0) catConfig.hiddenProducts.splice(idx, 1);
+  else catConfig.hiddenProducts.push(parseInt(id));
+  catRenderProductList();
+}
+
+function catToggleVariant(pid, vid) {
+  if (!catConfig.hiddenVariants) catConfig.hiddenVariants = {};
+  const key = String(pid);
+  if (!catConfig.hiddenVariants[key]) catConfig.hiddenVariants[key] = [];
+  const list = catConfig.hiddenVariants[key];
+  const idx = list.findIndex(x => x == vid);
+  if (idx >= 0) list.splice(idx, 1); else list.push(parseInt(vid));
+  if (!list.length) delete catConfig.hiddenVariants[key];
+  const hidden = catIsVarHidden(pid, vid);
+  $cat('cat-var-row-' + pid + '-' + vid)?.classList.toggle('hidden-var', hidden);
+  $cat('cat-var-tog-' + pid + '-' + vid)?.classList.toggle('on', !hidden);
+}
+
+function catToggleCategory(cat) {
+  if (!catConfig.hiddenCategories) catConfig.hiddenCategories = [];
+  const idx = catConfig.hiddenCategories.indexOf(cat);
+  if (idx >= 0) catConfig.hiddenCategories.splice(idx, 1);
+  else catConfig.hiddenCategories.push(cat);
+  catRenderCategoryList();
+}
+
+function catToggleExpand(id) {
+  const rows = $cat('cat-var-rows-' + id);
+  const btn = $cat('cat-expand-btn-' + id);
+  if (!rows) return;
+  const open = rows.classList.toggle('open');
+  btn.textContent = open ? 'Ocultar' : 'Variantes';
+}
+
+function catGetFilteredIsActive() {
+  return !!($cat('cat-search')?.value.trim() || $cat('cat-cat-filter')?.value);
+}
+
+function catGetOrderedAllProducts() {
+  const order = (catConfig.productOrder || {})[CAT_ALL_KEY] || [];
+  if (!order.length) return [...catAllProducts];
+  return [...catAllProducts].sort((a, b) => {
+    const ia = order.findIndex(id => String(id) === String(a.id || a.product_id));
+    const ib = order.findIndex(id => String(id) === String(b.id || b.product_id));
+    return (ia >= 0 ? ia : Infinity) - (ib >= 0 ? ib : Infinity);
+  });
+}
+
+let catDragAllFrom = null;
+
+function catRenderProductList() {
+  const q = ($cat('cat-search')?.value || '').toLowerCase();
+  const cat = $cat('cat-cat-filter')?.value || '';
+  const filtered = catGetFilteredIsActive();
+  const ordered = catGetOrderedAllProducts();
+  let prods = ordered.filter(p => {
+    const name = (p.name || '').toLowerCase();
+    const code = (p.code || p.sku || '').toLowerCase();
+    return (!q || name.includes(q) || code.includes(q)) && (!cat || (p.category || '') === cat);
+  });
+  prods.sort((a, b) => (catIsHidden(a.id||a.product_id)?1:0) - (catIsHidden(b.id||b.product_id)?1:0));
+  const posMap = {};
+  ordered.forEach((p, i) => { posMap[String(p.id || p.product_id)] = i + 1; });
+  const container = $cat('cat-products-list');
+  if (!prods.length) { container.innerHTML = '<div class="cat-loading">Sin resultados</div>'; return; }
+  container.innerHTML = prods.map((p, i) => {
+    const id = p.id || p.product_id;
+    const name = p.name || 'Sin nombre';
+    const pcat = p.category || '';
+    const variants = p.variantes || [];
+    const hidden = catIsHidden(id);
+    const pos = posMap[String(id)] || (i + 1);
+    const total = ordered.length;
+    const varRows = variants.map(v => {
+      const vh = catIsVarHidden(id, v.size_id);
+      return `<div class="cat-var-row${vh?' hidden-var':''}" id="cat-var-row-${id}-${v.size_id}">
+        <button class="cat-toggle${vh?'':' on'}" id="cat-var-tog-${id}-${v.size_id}" onclick="catToggleVariant(${id},${v.size_id})"></button>
+        <div class="cat-var-name">${esc(v.size)}</div>
+      </div>`;
+    }).join('');
+    const dragAttrs = filtered ? '' :
+      ` draggable="true" ondragstart="catProdDragStart(event,${i})" ondragover="catProdDragOver(event,${i})" ondragleave="catProdDragLeave(event)" ondrop="catProdDrop(event,${i})"`;
+    return `<div class="cat-prod-card${hidden?' hidden-prod':''}" id="cat-prod-row-${id}"${dragAttrs}>
+      <div class="cat-prod-card-hdr">
+        ${!filtered ? `<span class="cat-drag-handle" title="Arrastrar">⠿</span>` : ''}
+        ${!filtered ? `<div class="cat-move-btns"><button class="cat-move-btn" onclick="catMoveProduct('${id}',-1)">▲</button><button class="cat-move-btn" onclick="catMoveProduct('${id}',1)">▼</button></div>` : ''}
+        ${!filtered ? `<input class="cat-pos-input" type="number" min="1" max="${total}" value="${pos}" onkeydown="if(event.key==='Enter')catMoveProductToPos('${id}',this.value)" onblur="catMoveProductToPos('${id}',this.value)" onclick="event.stopPropagation();this.select()" />` : ''}
+        <button class="cat-toggle${hidden?'':' on'}" onclick="catToggleProduct(${id})"></button>
+        ${variants.length ? `<button class="cat-expand-btn" id="cat-expand-btn-${id}" onclick="catToggleExpand(${id})">Variantes</button>` : ''}
+      </div>
+      <div class="cat-prod-card-body">
+        <div class="cat-prod-name">${esc(name)}</div>
+        ${pcat ? `<div class="cat-prod-catname">${esc(pcat)}</div>` : ''}
+      </div>
+      ${variants.length ? `<div class="cat-var-rows" id="cat-var-rows-${id}">${varRows}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function catProdDragStart(e, idx) {
+  catDragAllFrom = idx;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => { $cat('cat-products-list')?.querySelectorAll('.cat-prod-card')[idx]?.classList.add('dragging'); }, 0);
+}
+function catProdDragOver(e, idx) {
+  e.preventDefault();
+  if (catDragAllFrom === null || catDragAllFrom === idx) return;
+  $cat('cat-products-list')?.querySelectorAll('.cat-prod-card').forEach((r, i) => r.classList.toggle('drag-over', i === idx));
+}
+function catProdDragLeave(e) { if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('drag-over'); }
+function catProdDrop(e, toIdx) {
+  e.preventDefault();
+  $cat('cat-products-list')?.querySelectorAll('.cat-prod-card').forEach(r => { r.classList.remove('drag-over'); r.classList.remove('dragging'); });
+  if (catDragAllFrom === null || catDragAllFrom === toIdx) { catDragAllFrom = null; return; }
+  if (!catConfig.productOrder) catConfig.productOrder = {};
+  const prods = catGetOrderedAllProducts();
+  const ids = prods.map(p => String(p.id || p.product_id));
+  const [moved] = ids.splice(catDragAllFrom, 1);
+  ids.splice(toIdx, 0, moved);
+  catConfig.productOrder[CAT_ALL_KEY] = ids;
+  catDragAllFrom = null;
+  catRenderProductList();
+}
+
+function catMoveProductToPos(id, rawVal) {
+  if (!catConfig.productOrder) catConfig.productOrder = {};
+  const prods = catGetOrderedAllProducts();
+  const ids = prods.map(p => String(p.id || p.product_id));
+  const cur = ids.indexOf(String(id));
+  if (cur === -1) return;
+  let newIdx = Math.max(0, Math.min(ids.length - 1, parseInt(rawVal) - 1));
+  if (isNaN(newIdx) || newIdx === cur) return;
+  ids.splice(cur, 1); ids.splice(newIdx, 0, String(id));
+  catConfig.productOrder[CAT_ALL_KEY] = ids;
+  catRenderProductList();
+  setTimeout(() => $cat('cat-prod-row-' + id)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 50);
+}
+
+function catMoveProduct(id, dir) {
+  if (!catConfig.productOrder) catConfig.productOrder = {};
+  const prods = catGetOrderedAllProducts();
+  const ids = prods.map(p => String(p.id || p.product_id));
+  const idx = ids.indexOf(String(id));
+  if (idx === -1) return;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= ids.length) return;
+  ids.splice(idx, 1); ids.splice(newIdx, 0, String(id));
+  catConfig.productOrder[CAT_ALL_KEY] = ids;
+  catRenderProductList();
+  setTimeout(() => $cat('cat-prod-row-' + id)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 50);
+}
+
+let catDragCatIdx = null;
+
+function catRenderCategoryList() {
+  const cats = catConfig.categoryOrder;
+  const container = $cat('cat-categories-list');
+  if (!cats?.length) { container.innerHTML = '<div class="cat-loading">No hay categorías</div>'; return; }
+  container.innerHTML = cats.map((cat, idx) => {
+    const count = catAllProducts.filter(p => (p.category || '') === cat && !catIsHidden(p.id || p.product_id)).length;
+    const catEsc = cat.replace(/'/g, "\\'");
+    const hidden = catIsCatHidden(cat);
+    return `<div class="cat-section-cat" id="cat-sec-${idx}" draggable="true"
+      ondragstart="catCatDragStart(event,${idx})" ondragover="catCatDragOver(event,${idx})" ondragleave="catCatDragLeave(event,${idx})" ondrop="catCatDrop(event,${idx})">
+      <div class="cat-cat-row collapsed" id="cat-cat-row-${idx}">
+        <span class="cat-drag-handle">⠿</span>
+        <button class="cat-toggle${hidden?'':' on'}" onclick="catToggleCategory('${catEsc}')"></button>
+        <div class="cat-cat-name${hidden?' hidden':''}">${esc(cat)} <span class="cat-cat-count">(${count} productos)</span></div>
+        <button class="cat-expand-btn" id="cat-cat-expand-${idx}" onclick="catToggleCatProducts('${catEsc}',${idx})">Ordenar productos</button>
+      </div>
+      <div class="cat-cat-products" id="cat-cat-prods-${idx}" style="display:none"></div>
+    </div>`;
+  }).join('');
+}
+
+function catCatDragStart(e, idx) {
+  catDragCatIdx = idx;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => $cat('cat-sec-' + idx)?.classList.add('dragging'), 0);
+}
+function catCatDragOver(e, idx) {
+  e.preventDefault();
+  if (catDragCatIdx === null || catDragCatIdx === idx) return;
+  document.querySelectorAll('.cat-section-cat').forEach(el => el.classList.remove('drag-over'));
+  $cat('cat-sec-' + idx)?.classList.add('drag-over');
+}
+function catCatDragLeave(e, idx) { if (!e.currentTarget.contains(e.relatedTarget)) $cat('cat-sec-' + idx)?.classList.remove('drag-over'); }
+function catCatDrop(e, toIdx) {
+  e.preventDefault();
+  document.querySelectorAll('.cat-section-cat').forEach(el => { el.classList.remove('drag-over'); el.classList.remove('dragging'); });
+  if (catDragCatIdx === null || catDragCatIdx === toIdx) { catDragCatIdx = null; return; }
+  const [moved] = catConfig.categoryOrder.splice(catDragCatIdx, 1);
+  catConfig.categoryOrder.splice(toIdx, 0, moved);
+  catDragCatIdx = null;
+  catRenderCategoryList();
+}
+
+function catToggleCatProducts(cat, idx) {
+  const el = $cat('cat-cat-prods-' + idx);
+  const btn = $cat('cat-cat-expand-' + idx);
+  const row = $cat('cat-cat-row-' + idx);
+  if (!el) return;
+  const isOpen = el.style.display === 'none';
+  el.style.display = isOpen ? 'block' : 'none';
+  row?.classList.toggle('collapsed', !isOpen);
+  btn.textContent = isOpen ? 'Cerrar' : 'Ordenar productos';
+  if (isOpen) catRenderCatProductRows(cat, idx);
+}
+
+function catGetOrderedCatProducts(cat) {
+  const prods = catAllProducts.filter(p => (p.category || '') === cat && !catIsHidden(p.id || p.product_id));
+  const order = (catConfig.productOrder || {})[cat] || [];
+  if (!order.length) return prods;
+  return [...prods].sort((a, b) => {
+    const ia = order.findIndex(id => id == (a.id || a.product_id));
+    const ib = order.findIndex(id => id == (b.id || b.product_id));
+    return (ia >= 0 ? ia : Infinity) - (ib >= 0 ? ib : Infinity);
+  });
+}
+
+let catDragProdFrom = null;
+
+function catRenderCatProductRows(cat, catIdx) {
+  const prods = catGetOrderedCatProducts(cat);
+  const el = $cat('cat-cat-prods-' + catIdx);
+  if (!el) return;
+  if (!prods.length) { el.innerHTML = '<div style="padding:10px;font-size:13px;color:#9CA3AF">No hay productos visibles en esta categoría.</div>'; return; }
+  const catEsc = cat.replace(/'/g, "\\'");
+  el.innerHTML = prods.map((p, i) => `
+    <div class="cat-cat-prod-row" draggable="true"
+      ondragstart="catCatProdDragStart(event,'${catEsc}',${catIdx},${i})"
+      ondragover="catCatProdDragOver(event,'${catEsc}',${catIdx},${i})"
+      ondragleave="catCatProdDragLeave(event,${catIdx},${i})"
+      ondrop="catCatProdDrop(event,'${catEsc}',${catIdx},${i})">
+      <span class="cat-drag-handle">⠿</span>
+      <div class="cat-cat-prod-pos">${i + 1}</div>
+      <div class="cat-cat-prod-name">${esc(p.name || 'Sin nombre')}</div>
+    </div>`).join('');
+}
+
+function catCatProdDragStart(e, cat, catIdx, prodIdx) {
+  catDragProdFrom = { cat, catIdx, prodIdx };
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => { $cat('cat-cat-prods-' + catIdx)?.querySelectorAll('.cat-cat-prod-row')[prodIdx]?.classList.add('dragging'); }, 0);
+}
+function catCatProdDragOver(e, cat, catIdx, prodIdx) {
+  e.preventDefault();
+  if (!catDragProdFrom || catDragProdFrom.prodIdx === prodIdx) return;
+  $cat('cat-cat-prods-' + catIdx)?.querySelectorAll('.cat-cat-prod-row').forEach((r, i) => r.classList.toggle('drag-over', i === prodIdx));
+}
+function catCatProdDragLeave(e, catIdx, prodIdx) { if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('drag-over'); }
+function catCatProdDrop(e, cat, catIdx, toProdIdx) {
+  e.preventDefault();
+  $cat('cat-cat-prods-' + catIdx)?.querySelectorAll('.cat-cat-prod-row').forEach(r => { r.classList.remove('drag-over'); r.classList.remove('dragging'); });
+  if (!catDragProdFrom || catDragProdFrom.prodIdx === toProdIdx) { catDragProdFrom = null; return; }
+  if (!catConfig.productOrder) catConfig.productOrder = {};
+  const prods = catGetOrderedCatProducts(cat);
+  const ids = prods.map(p => String(p.id || p.product_id));
+  const [moved] = ids.splice(catDragProdFrom.prodIdx, 1);
+  ids.splice(toProdIdx, 0, moved);
+  catConfig.productOrder[cat] = ids;
+  catDragProdFrom = null;
+  catRenderCatProductRows(cat, catIdx);
+}
+
+function catSetTab(tab, btn) {
+  $cat('cat-tab-products').style.display = tab === 'products' ? 'block' : 'none';
+  $cat('cat-tab-categories').style.display = tab === 'categories' ? 'block' : 'none';
+  $cat('cat-tab-settings').style.display = tab === 'settings' ? 'block' : 'none';
+  document.querySelectorAll('.cat-subtab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (tab === 'settings') catRenderSettings();
+}
+
+function catRenderSettings() {
+  $cat('cat-toggle-no-stock')?.classList.toggle('on', !!catConfig.hideNoStock);
+  const minInput = $cat('cat-input-min-purchase');
+  if (minInput) minInput.value = catConfig.minPurchase || 0;
+}
+
+function catToggleSetting(key) {
+  catConfig[key] = !catConfig[key];
+  catRenderSettings();
+}
+
+async function catGuardarConfig() {
+  const btn = $cat('cat-btn-save');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    const r = await fetch(CAT_API + '/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': catAdminPassword },
+      body: JSON.stringify(catConfig)
+    });
+    if (!r.ok) { const err = await r.json(); throw new Error(err.error || 'Error al guardar'); }
+    btn.textContent = '✓ Guardado';
+    btn.style.background = 'linear-gradient(135deg,#10B981,#059669)';
+    catShowToast('Configuración guardada correctamente', 'success');
+    setTimeout(() => { btn.textContent = 'Guardar cambios'; btn.style.background = ''; btn.disabled = false; }, 2500);
+  } catch (e) {
+    catShowToast('Error: ' + e.message, 'error');
+    btn.textContent = 'Guardar cambios'; btn.disabled = false;
+  }
+}
 </script>
 </body>
 </html>
