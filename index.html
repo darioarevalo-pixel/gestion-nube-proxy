@@ -747,6 +747,7 @@ let sortState = { productos: { col: 'sales30', dir: -1 }, variantes: { col: 'sal
 let pageState = { productos: 1, variantes: 1 };
 const PAGE_SIZE = 50;
 let rankChart = null, cChart = null, sChart = null, vmChart = null, fmChart = null, provChart = null, provCompChart = null, provCompraChart = null, colChart = null, tallesChart = null;
+let tabsRendered = {};
 let allMonthlyStats = [], allMonths = [], allFundasStats = {}, allProveedoresData = {};
 let allColoresSales = [], colorManualMap = {};
 let allTallesData = [], allTallesCategories = [];
@@ -1209,17 +1210,8 @@ function procesarYRenderizar(productos, ventas, detalles, inventario, vmMes, vmC
 
   document.getElementById('dashboard').style.display = 'block';
   setProgress(0);
-  renderProductos();
-  renderVariantes();
-  renderRanking();
-  renderCurva(months);
-  renderStock();
-  renderVentasMensuales();
-  initFundasSelectors();
-  renderFundasPorModelo();
-  updateProveedoresTab();
-  updateColoresTab();
-  updateTallesTab();
+  tabsRendered = {};
+  renderProductos(); // solo la pestaña inicial
 }
 
 function filtrarLista(lista, searchId, filterId) {
@@ -2136,6 +2128,18 @@ function switchTab(id, btn) {
   document.getElementById('tab-' + id).classList.add('visible');
   document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  if (!tabsRendered[id] && allProductos.length) {
+    tabsRendered[id] = true;
+    if (id === 'variantes')       renderVariantes();
+    else if (id === 'ranking')    renderRanking();
+    else if (id === 'curva')      { const ms=[]; const c=new Date(TODAY.getFullYear(),TODAY.getMonth(),1); for(let i=15;i>=0;i--){const d=new Date(c.getFullYear(),c.getMonth()-i,1);ms.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));} renderCurva(ms); }
+    else if (id === 'stock')      renderStock();
+    else if (id === 'ventas-mensuales') renderVentasMensuales();
+    else if (id === 'fundas-modelo')    { initFundasSelectors(); renderFundasPorModelo(); }
+    else if (id === 'proveedores')      updateProveedoresTab();
+    else if (id === 'colores')          updateColoresTab();
+    else if (id === 'talles')           updateTallesTab();
+  }
 }
 
 const USERS = { 'Bruno Arevalo': 'BDI123456', 'Dario Arevalo': 'BDI123456' };
