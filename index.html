@@ -428,6 +428,9 @@
           </select>
           <button class="btn-sm" onclick="toggleAllProds(true)">Todos</button>
           <button class="btn-sm" onclick="toggleAllProds(false)">Ninguno</button>
+          <button class="btn-sm" onclick="toggleTopProds(10)">Top 10</button>
+          <button class="btn-sm" onclick="toggleTopProds(20)">Top 20</button>
+          <button class="btn-sm" onclick="toggleTopProds(30)">Top 30</button>
         </div>
         <div id="fm-prod-checkboxes" class="fm-models-grid"></div>
       </div>
@@ -444,10 +447,10 @@
         </div>
         <table>
           <thead><tr>
-            <th style="width:32px;">#</th>
-            <th>Modelo</th>
-            <th>Vendidas</th>
-            <th>% del total</th>
+            <th style="width:32px;cursor:pointer;" onclick="fmRankSort('pos')" id="fmth-pos">#</th>
+            <th style="cursor:pointer;" onclick="fmRankSort('model')" id="fmth-model">Modelo</th>
+            <th style="cursor:pointer;" onclick="fmRankSort('qty')" id="fmth-qty">Vendidas</th>
+            <th style="cursor:pointer;" onclick="fmRankSort('pct')" id="fmth-pct">% del total</th>
           </tr></thead>
           <tbody id="fm-tbody"></tbody>
         </table>
@@ -1705,18 +1708,7 @@ function toggleProdsPanel() {
 // ── Simulación de pedido ──────────────────────────────────────────────────────
 let fmSimRows = [];
 
-function fmImportarRanking() {
-  const rows = [...document.querySelectorAll('#fm-tbody tr')];
-  if (!rows.length) return;
-  fmSimRows = rows.map(tr => {
-    const cells = tr.querySelectorAll('td');
-    const model = cells[1]?.textContent?.trim() || '';
-    const pct   = parseFloat(cells[3]?.textContent?.replace('%','')) || 0;
-    return { model, pct };
-  }).filter(r => r.model);
-  fmSimRender();
-  document.getElementById('fm-sim-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
+
 
 function fmSimRender() {
   document.getElementById('fm-sim-tbody').innerHTML = fmSimRows.map((r, i) => `
@@ -1760,6 +1752,65 @@ function fmSimAgregarFila() {
 function fmSimEliminar(i) {
   fmSimRows.splice(i, 1);
   fmSimRender();
+}
+
+function fmRankRenderTabla() {
+  const data = window._fmRankData || [];
+  const col   = window._fmRankSortCol || 'pos';
+  const asc   = window._fmRankSortAsc !== false;
+
+  const display = [...data].sort((a, b) => {
+    let v = col === 'model' ? a.model.localeCompare(b.model, 'es') : a[col] - b[col];
+    return asc ? v : -v;
+  });
+
+  // Indicadores en cabeceras
+  ['pos','model','qty','pct'].forEach(c => {
+    const th = document.getElementById('fmth-' + c);
+    if (th) th.textContent = { pos:'#', model:'Modelo', qty:'Vendidas', pct:'% del total' }[c] +
+      (col === c ? (asc ? ' ▲' : ' ▼') : '');
+  });
+
+  document.getElementById('fm-tbody').innerHTML = display.map(r => `<tr>
+    <td style="color:#888;font-size:11px;width:32px;">${r.pos}</td>
+    <td style="font-weight:500;">${r.model}</td>
+    <td style="font-weight:600;">${r.qty.toLocaleString('es-AR')}</td>
+    <td style="color:#666;">${r.pct}%
+      <div style="display:inline-block;width:60px;height:4px;background:#e5e5e5;border-radius:2px;margin-left:6px;vertical-align:middle;">
+        <div style="width:${Math.min(100,r.pct)}%;height:100%;background:#7F77DD;border-radius:2px;"></div>
+      </div>
+    </td>
+  </tr>`).join('');
+}
+
+function fmRankSort(col) {
+  if (window._fmRankSortCol === col) {
+    window._fmRankSortAsc = !window._fmRankSortAsc;
+  } else {
+    window._fmRankSortCol = col;
+    window._fmRankSortAsc = col !== 'model'; // numéricos desc por defecto, modelo asc
+  }
+  fmRankRenderTabla();
+}
+
+function fmImportarRanking() {
+  const data = window._fmRankData || [];
+  if (!data.length) return;
+  const col = window._fmRankSortCol || 'pos';
+  const asc = window._fmRankSortAsc !== false;
+  const display = [...data].sort((a, b) => {
+    let v = col === 'model' ? a.model.localeCompare(b.model, 'es') : a[col] - b[col];
+    return asc ? v : -v;
+  });
+  fmSimRows = display.map(r => ({ model: r.model, pct: r.pct }));
+  fmSimRender();
+  document.getElementById('fm-sim-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function toggleTopProds(n) {
+  const cbs = [...document.querySelectorAll('.fm-prod-cb')];
+  cbs.forEach((cb, i) => { cb.checked = i < n; });
+  renderFundasPorModelo();
 }
 
 function toggleAllModels(checked) {
@@ -1847,20 +1898,13 @@ function renderFundasPorModelo() {
     }
   });
 
-  // Tabla
-  document.getElementById('fm-tbody').innerHTML = sorted.map(([model, qty], i) => {
-    const pct = total > 0 ? ((qty / total) * 100).toFixed(1) : '0.0';
-    return `<tr>
-      <td style="color:#888;font-size:11px;width:32px;">${i + 1}</td>
-      <td style="font-weight:500;">${model}</td>
-      <td style="font-weight:600;">${qty.toLocaleString('es-AR')}</td>
-      <td style="color:#666;">${pct}%
-        <div style="display:inline-block;width:60px;height:4px;background:#e5e5e5;border-radius:2px;margin-left:6px;vertical-align:middle;">
-          <div style="width:${Math.min(100,pct)}%;height:100%;background:#7F77DD;border-radius:2px;"></div>
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
+  // Guardar datos para sort y simulación
+  window._fmRankData = sorted.map(([model, qty], i) => ({
+    pos: i + 1, model, qty, pct: total > 0 ? +((qty / total) * 100).toFixed(1) : 0
+  }));
+  window._fmRankSortCol = 'pos';
+  window._fmRankSortAsc = true;
+  fmRankRenderTabla();
 
   const prodSuffix = prodFilterActive ? ` · ${checkedProds.size} fundas` : '';
   document.getElementById('fm-total').textContent =
