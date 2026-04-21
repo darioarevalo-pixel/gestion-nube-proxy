@@ -643,8 +643,12 @@
         <div>
           <div style="font-size:16px;font-weight:700;">Auditoría Tienda Online — BDI</div>
           <div style="font-size:12px;color:#9CA3AF;margin-top:2px;">Productos en Tiendanube y su estado de fotos y descripción</div>
+          <div style="font-size:11px;color:#9CA3AF;margin-top:2px;" id="tienda-cache-info"></div>
         </div>
-        <button class="btn-primary" onclick="tiendaCargar()">Actualizar</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-sm" onclick="tiendaCargar(true)" title="Actualizar datos desde Tiendanube (puede tardar ~30s)">↺ Refrescar</button>
+          <button class="btn-primary" onclick="tiendaCargar()">Cargar</button>
+        </div>
       </div>
 
       <div id="tienda-loading" style="text-align:center;padding:40px;color:#9CA3AF;font-size:13px;display:none;">Cargando productos de Tiendanube...</div>
@@ -2156,11 +2160,16 @@ function updateCatalogoTab() {
 let tiendaAllProducts = [];
 let tiendaFilter = 'all';
 
-async function tiendaCargar() {
-  document.getElementById('tienda-loading').style.display = '';
-  document.getElementById('tienda-panel').style.display   = 'none';
+async function tiendaCargar(forceRefresh = false) {
+  const loadingEl = document.getElementById('tienda-loading');
+  loadingEl.textContent = forceRefresh
+    ? 'Actualizando desde Tiendanube... (puede tardar ~30s)'
+    : 'Cargando productos de Tiendanube...';
+  loadingEl.style.display = '';
+  document.getElementById('tienda-panel').style.display = 'none';
   try {
-    const r = await fetch('https://bdi-catalogo.vercel.app/api/tiendanube-audit');
+    const url = 'https://bdi-catalogo.vercel.app/api/tiendanube-audit' + (forceRefresh ? '?refresh=1' : '');
+    const r = await fetch(url);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
     tiendaAllProducts = data.products || [];
@@ -2168,13 +2177,20 @@ async function tiendaCargar() {
     document.querySelectorAll('.tienda-filter-btn').forEach(b => b.classList.remove('active'));
     document.querySelector('.tienda-filter-btn[data-filter="all"]').classList.add('active');
     document.getElementById('tienda-search').value = '';
+    if (data.cached_at) {
+      const d = new Date(data.cached_at);
+      const cacheHit = r.headers.get('X-Cache') === 'HIT';
+      document.getElementById('tienda-cache-info').textContent =
+        (cacheHit ? 'Desde caché — ' : 'Actualizado — ') +
+        d.toLocaleDateString('es-AR') + ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    }
     tiendaRenderStats();
     tiendaRender();
-    document.getElementById('tienda-panel').style.display   = '';
+    document.getElementById('tienda-panel').style.display = '';
   } catch (e) {
     alert('Error cargando Tiendanube: ' + e.message);
   } finally {
-    document.getElementById('tienda-loading').style.display = 'none';
+    loadingEl.style.display = 'none';
   }
 }
 
