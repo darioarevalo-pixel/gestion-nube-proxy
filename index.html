@@ -941,7 +941,9 @@ async function fetchFresh() {
       fetchAll('inventario',              'select=product_id,product_name,size_id,size_name,available_quantity&order=product_id',       'inventario', true),
       fetchAll('ventas_por_mes',          'select=mes,channel,cantidad_ventas,total_items,promedio_items_por_venta&order=mes',          'vmMes', true),
       fetchAll('ventas_por_categoria_mes','select=mes,categoria,total_items&order=mes',                                                 'vmCat', true),
-      fetchAll('fundas_por_modelo_mes',   'select=mes,modelo,product_id,product_name,product_created_at,total_items&order=mes',        'vmFundas', true),
+      currentCuenta === CUENTAS.zattia
+        ? Promise.resolve([])
+        : fetchAll('fundas_por_modelo_mes', 'select=mes,modelo,product_id,product_name,product_created_at,total_items&order=mes', 'vmFundas', true),
       colorManualPromise,
       fetchAll('ventas',                  'select=id,date_sale&date_sale=gte.2025-01-01&order=id',                                      'ventas', true),
     ]);
