@@ -487,7 +487,13 @@
             </tr>
           </tfoot>
         </table>
-        <div style="font-size:11px;color:#9CA3AF;margin-top:8px;">Los porcentajes y modelos son editables. La cantidad se calcula automáticamente.</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;flex-wrap:wrap;gap:8px;">
+          <div style="font-size:11px;color:#9CA3AF;">Los porcentajes y modelos son editables. La cantidad se calcula automáticamente.</div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn-sm" onclick="fmSimCopiar('ambos')" title="Copia modelo y cantidad separados por tabulación">⎘ Modelo + Cantidad</button>
+            <button class="btn-sm" onclick="fmSimCopiar('cantidad')" title="Copia solo las cantidades">⎘ Solo cantidad</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1754,6 +1760,18 @@ function fmSimAgregarFila() {
 function fmSimEliminar(i) {
   fmSimRows.splice(i, 1);
   fmSimRender();
+}
+
+function fmSimCopiar(modo) {
+  const total = parseFloat(document.getElementById('fm-sim-total').value) || 0;
+  const lines = fmSimRows.map(r => {
+    const qty = Math.round(total * r.pct / 100);
+    return modo === 'ambos' ? `${r.model}\t${qty}` : `${qty}`;
+  });
+  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    const btns = document.querySelectorAll('#fm-sim-card .btn-sm');
+    btns.forEach(b => { if (b.textContent.includes(modo === 'ambos' ? 'Modelo' : 'Solo')) { const orig = b.textContent; b.textContent = '✓ Copiado'; setTimeout(() => b.textContent = orig, 1500); } });
+  });
 }
 
 function fmRankRenderTabla() {
