@@ -230,8 +230,8 @@ async function main() {
     // Refrescar vistas materializadas
     process.stdout.write('\n[vistas] Refrescando vistas materializadas...');
     const { error: viewsError } = await supabase.rpc('refresh_all_views');
-    if (viewsError) throw new Error(`Error refrescando vistas: ${viewsError.message}`);
-    console.log(' OK');
+    if (viewsError) console.log(` WARN: ${viewsError.message}`);
+    else console.log(' OK');
 
     console.log('\n=== Resultado ===');
     console.log(`Inventario:     ${inventario}`);
