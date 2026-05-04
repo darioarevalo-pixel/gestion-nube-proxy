@@ -114,15 +114,20 @@ async function syncProductos() {
 async function syncInventario() {
   console.log('\n[inventario] Descargando (siempre completo)...');
   const rows = await fetchAllPages('inventario/obtener?per_page=50');
-  const inventario = rows.map(r => ({
-    product_id:         r.product_id,
-    product_name:       r.product_name || null,
-    size_id:            r.size_id,
-    size_name:          r.size_name || null,
-    store_name:         r.store_name || r.store || '',
-    available_quantity: r.available_quantity ?? r.quantity ?? 0,
-  }));
-  console.log(`[inventario] ${inventario.length} registros. Guardando en Supabase...`);
+  const seen = new Map();
+  for (const r of rows) {
+    const key = `${r.product_id}|${r.size_id}|${r.store_name || r.store || ''}`;
+    seen.set(key, {
+      product_id:         r.product_id,
+      product_name:       r.product_name || null,
+      size_id:            r.size_id,
+      size_name:          r.size_name || null,
+      store_name:         r.store_name || r.store || '',
+      available_quantity: r.available_quantity ?? r.quantity ?? 0,
+    });
+  }
+  const inventario = Array.from(seen.values());
+  console.log(`[inventario] ${inventario.length} registros (${rows.length - inventario.length} duplicados ignorados). Guardando en Supabase...`);
   if (!inventario.length) return 0;
   const { error } = await supabase.from('inventario').upsert(inventario, { onConflict: 'product_id,size_id,store_name' });
   if (error) throw new Error(`Error guardando inventario: ${error.message}`);
