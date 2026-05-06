@@ -3255,6 +3255,24 @@ function fmtMonto(n) {
   return '$' + Math.round(n).toLocaleString('es-AR');
 }
 
+// Normaliza un teléfono para WhatsApp en formato Argentino.
+// Devuelve dígitos puros listos para wa.me (sin '+' ni espacios).
+// Si no se puede normalizar, devuelve ''.
+function normalizeArgPhone(phone) {
+  if (!phone) return '';
+  let p = String(phone).replace(/[^\d]/g, '');
+  if (!p) return '';
+  if (p.startsWith('00')) p = p.slice(2);
+  if (p.startsWith('54')) {
+    return p.startsWith('549') ? p : '549' + p.slice(2);
+  }
+  if (p.startsWith('0')) p = p.slice(1);
+  if (p.length === 10) return '549' + p;
+  if (p.length === 11 && p.startsWith('9')) return '54' + p;
+  if (p.length >= 12 && p.length <= 13) return p;
+  return '';
+}
+
 function fmtFecha(d) {
   if (!d) return '—';
   const dt = new Date(d);
@@ -3454,8 +3472,8 @@ function renderCRMTabla() {
     const seg = segmentoCliente(c);
     const segLabel = ({ activos:'🔥 Activo', riesgo:'⚠️ Riesgo', dormidos:'🥶 Dormido', nuevos:'🆕 Nuevo', otros:'·' })[seg];
     const segColor = ({ activos:'#16A34A', riesgo:'#D97706', dormidos:'#DC2626', nuevos:'#0EA5E9', otros:'#9CA3AF' })[seg];
-    const phoneClean = (c.phone || '').replace(/[^\d+]/g, '');
-    const waUrl = phoneClean ? `https://wa.me/${phoneClean.replace(/^\+/, '')}` : '';
+    const waPhone = normalizeArgPhone(c.phone);
+    const waUrl = waPhone ? `https://wa.me/${waPhone}` : '';
     const contacto = [
       c.email ? `<div style="font-size:12px;">${c.email}</div>` : '',
       c.phone ? `<div style="font-size:11px;color:#6B7280;">${c.phone}</div>` : '',
