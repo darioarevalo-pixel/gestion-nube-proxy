@@ -135,13 +135,8 @@ async function syncInventario() {
   return inventario.length;
 }
 
-async function syncVentas(fromDate) {
-  const today = new Date().toISOString().substring(0, 10);
-  const basePath = `ventas/obtener?from=${fromDate}&to=${today}&include_details=1&per_page=50`;
-  console.log(`\n[ventas] Descargando desde ${fromDate} hasta ${today}...`);
-  const rows = await fetchAllPages(basePath);
-
-  const ventas = rows.map(v => ({
+function mapVentaRow(v) {
+  return {
     id:             v.id,
     number:         v.number || null,
     date_sale:      v.date_sale || null,
@@ -151,7 +146,50 @@ async function syncVentas(fromDate) {
     payment_method: v.payment_method || null,
     store:          v.store || null,
     client_name:    v.client_name || null,
-  }));
+    client_id:       v.client_id || null,
+    client_email:    v.client_email || null,
+    client_phone:    v.client_phone || null,
+    client_city:     v.client_city || null,
+    client_province: v.client_province || null,
+    channel_id:      v.channel_id ?? null,
+    sale_type_id:    v.sale_type_id ?? null,
+    total_cost:      v.total_cost ?? null,
+    profit:          v.profit ?? null,
+    items_sold:      v.items_sold ?? null,
+  };
+}
+
+function extraerClientesDeVentas(rows) {
+  const map = new Map();
+  for (const v of rows) {
+    if (!v.client_id) continue;
+    const ts = v.created_at || v.updated_at || v.date_sale || '';
+    const prev = map.get(v.client_id);
+    if (!prev || (ts && ts > prev._ts)) {
+      map.set(v.client_id, {
+        id:           v.client_id,
+        name:         v.client_name || null,
+        email:        v.client_email || null,
+        phone:        v.client_phone || null,
+        city:         v.client_city || null,
+        province:     v.client_province || null,
+        postal_code:  v.client_postal_code || null,
+        address:      v.client_address || null,
+        updated_at:   new Date().toISOString(),
+        _ts: ts,
+      });
+    }
+  }
+  return [...map.values()].map(({ _ts, ...rest }) => rest);
+}
+
+async function syncVentas(fromDate) {
+  const today = new Date().toISOString().substring(0, 10);
+  const basePath = `ventas/obtener?from=${fromDate}&to=${today}&include_details=1&per_page=50`;
+  console.log(`\n[ventas] Descargando desde ${fromDate} hasta ${today}...`);
+  const rows = await fetchAllPages(basePath);
+
+  const ventas = rows.map(mapVentaRow);
 
   const detalles = rows.flatMap(v =>
     (v.detalles || []).map(d => ({
@@ -167,11 +205,22 @@ async function syncVentas(fromDate) {
     }))
   );
 
-  console.log(`[ventas] ${ventas.length} ventas, ${detalles.length} detalles. Guardando en Supabase...`);
+  const clientes = extraerClientesDeVentas(rows);
+
+  console.log(`[ventas] ${ventas.length} ventas, ${detalles.length} detalles, ${clientes.length} clientes. Guardando en Supabase...`);
 
   if (ventas.length) {
     const { error } = await supabase.from('ventas').upsert(ventas, { onConflict: 'id' });
     if (error) throw new Error(`Error guardando ventas: ${error.message}`);
+  }
+
+  if (clientes.length) {
+    const BATCH_C = 500;
+    for (let i = 0; i < clientes.length; i += BATCH_C) {
+      const lote = clientes.slice(i, i + BATCH_C);
+      const { error } = await supabase.from('clientes').upsert(lote, { onConflict: 'id' });
+      if (error) throw new Error(`Error guardando clientes (lote ${i}): ${error.message}`);
+    }
   }
 
   if (detalles.length) {
@@ -186,7 +235,7 @@ async function syncVentas(fromDate) {
   }
 
   console.log(`[ventas] OK`);
-  return { ventas: ventas.length, detalles: detalles.length };
+  return { ventas: ventas.length, detalles: detalles.length, clientes: clientes.length };
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────

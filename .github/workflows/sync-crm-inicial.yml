@@ -1,0 +1,32 @@
+name: Sync CRM (inicial / on-demand) — Gestión Nube
+
+# Solo corre manualmente. Sirve para llenar histórico de ventas + clientes
+# después de la migración CRM, o para re-sincronizar todo cuando haga falta.
+on:
+  workflow_dispatch:
+    inputs:
+      from_date:
+        description: 'Fecha desde (YYYY-MM-DD)'
+        required: false
+        default: '2025-01-01'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Ejecutar sync CRM inicial
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          GN_TOKEN:     ${{ secrets.GN_TOKEN }}
+          SYNC_FROM_DATE: ${{ github.event.inputs.from_date }}
+        run: node scripts/sync-ventas-crm.js

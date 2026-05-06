@@ -288,6 +288,7 @@
       <button class="tab" id="tab-btn-proveedores" style="display:none;" onclick="switchTab('proveedores', this)">Proveedores</button>
       <button class="tab" id="tab-btn-colores" style="display:none;" onclick="switchTab('colores', this)">Colores</button>
       <button class="tab" id="tab-btn-talles" style="display:none;" onclick="switchTab('talles', this)">Talles</button>
+      <button class="tab" id="tab-btn-clientes" style="display:none;" onclick="switchTab('clientes', this)">Clientes</button>
       <button class="tab" id="tab-btn-catalogo" style="display:none;" onclick="switchTab('catalogo', this)">Catálogo Admin</button>
       <button class="tab" id="tab-btn-tienda" style="display:none;" onclick="switchTab('tienda', this)">Tienda Online</button>
     </div>
@@ -770,6 +771,77 @@
           </table>
         </div>
         <div style="font-size:12px;color:#9CA3AF;margin-top:8px;" id="tienda-count"></div>
+      </div>
+    </div>
+
+    <!-- ── Clientes (CRM Mayorista) ───────────────────────────────────────── -->
+    <div id="tab-clientes" class="section">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+          <div>
+            <h3 style="margin:0;font-size:16px;font-weight:700;">Clientes mayoristas</h3>
+            <div style="font-size:12px;color:#9CA3AF;margin-top:2px;">CRM filtrado por canal Mayorista</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <label style="font-size:12px;color:#6B7280;">Canal:</label>
+            <select id="crm-canal" onchange="renderCRM()">
+              <option value="10">Mayorista</option>
+              <option value="all">Todos los canales</option>
+            </select>
+            <button class="btn-sm" onclick="renderCRM()">Recalcular</button>
+          </div>
+        </div>
+
+        <!-- Stats segmentos -->
+        <div id="crm-segmentos" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px;"></div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+          <input type="text" id="crm-search" placeholder="Buscar nombre, email o teléfono..." oninput="renderCRMTabla()">
+          <select id="crm-segmento-sel" onchange="renderCRMTabla()">
+            <option value="todos">Todos</option>
+            <option value="top">⭐ Top clientes</option>
+            <option value="activos">🔥 Activos recurrentes</option>
+            <option value="riesgo">⚠️ En riesgo</option>
+            <option value="dormidos">🥶 Dormidos (90+ días)</option>
+            <option value="nuevos">🆕 Nuevos</option>
+          </select>
+          <span style="font-size:12px;color:#9CA3AF;margin-left:auto;" id="crm-count"></span>
+        </div>
+
+        <!-- Tabla -->
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th onclick="crmSort('name')">Cliente ↕</th>
+                <th onclick="crmSort('contact')">Contacto</th>
+                <th onclick="crmSort('city')">Ciudad</th>
+                <th onclick="crmSort('total_sales')" style="text-align:right;">Pedidos ↕</th>
+                <th onclick="crmSort('total_amount')" style="text-align:right;">Total comprado ↕</th>
+                <th onclick="crmSort('avg_ticket')" style="text-align:right;">Ticket prom. ↕</th>
+                <th onclick="crmSort('last_sale')" style="text-align:right;">Último pedido ↕</th>
+                <th>Segmento</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="crm-tbody"><tr><td colspan="9" style="text-align:center;padding:24px;color:#9CA3AF;">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal detalle cliente -->
+    <div id="cliente-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:500;align-items:center;justify-content:center;padding:1rem;">
+      <div style="background:#fff;border-radius:12px;width:100%;max-width:720px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden;">
+        <div style="padding:18px 20px;border-bottom:1px solid #E5E7EB;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+          <div>
+            <div id="cm-name" style="font-size:17px;font-weight:700;"></div>
+            <div id="cm-meta" style="font-size:12px;color:#6B7280;margin-top:3px;"></div>
+          </div>
+          <button class="btn-sm" onclick="cerrarClienteModal()">Cerrar</button>
+        </div>
+        <div id="cm-body" style="padding:18px 20px;overflow-y:auto;flex:1;"></div>
       </div>
     </div>
   </div>
@@ -2552,6 +2624,7 @@ function switchTab(id, btn) {
     else if (id === 'proveedores')      updateProveedoresTab();
     else if (id === 'colores')          updateColoresTab();
     else if (id === 'talles')           updateTallesTab();
+    else if (id === 'clientes')         cargarCRM();
   }
 }
 
@@ -2596,6 +2669,7 @@ function updateCatalogoTab() {
   const isBDI = currentCuenta === CUENTAS.bdi;
   document.getElementById('tab-btn-catalogo').style.display = isBDI ? '' : 'none';
   document.getElementById('tab-btn-tienda').style.display   = isBDI ? '' : 'none';
+  document.getElementById('tab-btn-clientes').style.display = isBDI ? '' : 'none';
 }
 
 // ── Tienda Online ─────────────────────────────────────────────────────────────
@@ -3161,6 +3235,297 @@ async function catGuardarConfig() {
     btn.textContent = 'Guardar cambios'; btn.disabled = false;
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CRM Mayorista — Tab Clientes
+// ═══════════════════════════════════════════════════════════════════════════════
+let crmRows = [];                     // ventas raw filtradas (mayorista u otro)
+let crmClientes = {};                 // map id -> info personal
+let crmAgregado = [];                 // [{ id, name, total_sales, total_amount, last_sale, ... }]
+let crmSortState = { col: 'total_amount', dir: -1 };
+
+const RIESGO_MIN_DAYS  = 30;          // entre estos dos días → "en riesgo"
+const RIESGO_MAX_DAYS  = 90;
+const DORMIDO_DAYS     = 90;          // > 90 → "dormido"
+const NUEVO_DAYS       = 30;          // primer pedido <= 30 días → "nuevo"
+const ACTIVO_MIN_PED   = 3;           // 3+ pedidos activos → "recurrente"
+const TOP_LIMIT        = 20;          // tarjeta "Top clientes"
+
+function fmtMonto(n) {
+  return '$' + Math.round(n).toLocaleString('es-AR');
+}
+
+function fmtFecha(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return dt.getDate().toString().padStart(2,'0') + '/' + (dt.getMonth()+1).toString().padStart(2,'0') + '/' + dt.getFullYear();
+}
+
+function diasDesde(d) {
+  if (!d) return null;
+  return Math.floor((TODAY - new Date(d)) / 86400000);
+}
+
+async function cargarCRM() {
+  if (!currentCuenta) return;
+  setStatus('Cargando clientes mayoristas...');
+  try {
+    const canalSel = document.getElementById('crm-canal').value;
+    const filtroCanal = canalSel === 'all' ? '' : `&channel_id=eq.${canalSel}`;
+
+    // Traemos solo los campos que necesitamos para minimizar la carga
+    const ventasParams = `select=id,date_sale,total_price,client_id,channel_id,sale_state${filtroCanal}&client_id=not.is.null&order=date_sale.desc`;
+    const ventas = await fetchAll('ventas', ventasParams, 'ventas mayoristas', true);
+    crmRows = ventas;
+
+    // Clientes: solo los que aparecen en las ventas (set de ids)
+    const ids = [...new Set(ventas.map(v => v.client_id).filter(Boolean))];
+    if (ids.length === 0) {
+      crmClientes = {};
+    } else {
+      // Trae en lotes de 200 ids para no romper la URL
+      crmClientes = {};
+      for (let i = 0; i < ids.length; i += 200) {
+        const lote = ids.slice(i, i + 200);
+        const cs = await sbFetch('clientes', `select=id,name,email,phone,city,province&id=in.(${lote.join(',')})`);
+        for (const c of cs) crmClientes[c.id] = c;
+      }
+    }
+
+    setStatus('');
+    renderCRM();
+  } catch (e) {
+    setStatus('Error cargando CRM: ' + e.message, 'error');
+    document.getElementById('crm-tbody').innerHTML =
+      `<tr><td colspan="9" style="text-align:center;padding:24px;color:#DC2626;">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function calcularAgregadoCRM() {
+  // Agrupa ventas por cliente y calcula RFM
+  const map = new Map();
+  for (const v of crmRows) {
+    if (!v.client_id) continue;
+    const id = v.client_id;
+    if (!map.has(id)) {
+      map.set(id, {
+        id,
+        ventas: [],
+        first_sale: null,
+        last_sale: null,
+        total_sales: 0,
+        total_amount: 0,
+      });
+    }
+    const e = map.get(id);
+    e.ventas.push(v);
+    e.total_sales += 1;
+    e.total_amount += parseFloat(v.total_price || 0);
+    const d = v.date_sale;
+    if (d) {
+      if (!e.first_sale || d < e.first_sale) e.first_sale = d;
+      if (!e.last_sale  || d > e.last_sale)  e.last_sale = d;
+    }
+  }
+
+  const result = [];
+  for (const e of map.values()) {
+    const cliente = crmClientes[e.id] || {};
+    const dias = diasDesde(e.last_sale);
+    const diasFirst = diasDesde(e.first_sale);
+    const avg = e.total_sales > 0 ? e.total_amount / e.total_sales : 0;
+    result.push({
+      id: e.id,
+      name: cliente.name || ('Cliente #' + e.id),
+      email: cliente.email || '',
+      phone: cliente.phone || '',
+      city: cliente.city || '',
+      province: cliente.province || '',
+      first_sale: e.first_sale,
+      last_sale: e.last_sale,
+      dias_ultimo: dias,
+      dias_primero: diasFirst,
+      total_sales: e.total_sales,
+      total_amount: e.total_amount,
+      avg_ticket: avg,
+      ventas: e.ventas,
+    });
+  }
+  return result;
+}
+
+function segmentoCliente(c) {
+  if (c.dias_primero !== null && c.dias_primero <= NUEVO_DAYS) return 'nuevos';
+  if (c.dias_ultimo !== null && c.dias_ultimo > DORMIDO_DAYS) return 'dormidos';
+  if (c.total_sales >= 2 && c.dias_ultimo !== null && c.dias_ultimo >= RIESGO_MIN_DAYS && c.dias_ultimo <= RIESGO_MAX_DAYS) return 'riesgo';
+  if (c.total_sales >= ACTIVO_MIN_PED && c.dias_ultimo !== null && c.dias_ultimo < RIESGO_MIN_DAYS) return 'activos';
+  return 'otros';
+}
+
+function renderCRM() {
+  if (!crmRows.length && Object.keys(crmClientes).length === 0) {
+    cargarCRM();
+    return;
+  }
+  crmAgregado = calcularAgregadoCRM();
+
+  // Stats por segmento
+  const counts = { top: Math.min(TOP_LIMIT, crmAgregado.length), activos: 0, riesgo: 0, dormidos: 0, nuevos: 0 };
+  for (const c of crmAgregado) {
+    const seg = segmentoCliente(c);
+    if (seg === 'activos')  counts.activos++;
+    else if (seg === 'riesgo')   counts.riesgo++;
+    else if (seg === 'dormidos') counts.dormidos++;
+    else if (seg === 'nuevos')   counts.nuevos++;
+  }
+
+  document.getElementById('crm-segmentos').innerHTML = [
+    { key: 'top',     label: '⭐ Top clientes', n: counts.top, hint: 'Por monto total' },
+    { key: 'activos', label: '🔥 Activos',      n: counts.activos, hint: '3+ pedidos, < 30 días' },
+    { key: 'riesgo',  label: '⚠️ En riesgo',     n: counts.riesgo,  hint: '30 a 90 días sin comprar' },
+    { key: 'dormidos',label: '🥶 Dormidos',      n: counts.dormidos,hint: '> 90 días sin comprar' },
+    { key: 'nuevos',  label: '🆕 Nuevos',        n: counts.nuevos,  hint: 'Primer pedido < 30d' },
+  ].map(s => `
+    <div class="stat" style="cursor:pointer;" onclick="seleccionarSegmento('${s.key}')">
+      <div class="stat-label">${s.label}</div>
+      <div class="stat-value" style="font-size:22px;">${s.n}</div>
+      <div style="font-size:11px;color:#9CA3AF;margin-top:3px;">${s.hint}</div>
+    </div>
+  `).join('');
+
+  renderCRMTabla();
+}
+
+function seleccionarSegmento(key) {
+  document.getElementById('crm-segmento-sel').value = key;
+  renderCRMTabla();
+}
+
+function crmSort(col) {
+  if (crmSortState.col === col) crmSortState.dir = -crmSortState.dir;
+  else crmSortState = { col, dir: -1 };
+  renderCRMTabla();
+}
+
+function renderCRMTabla() {
+  const q = (document.getElementById('crm-search').value || '').trim().toLowerCase();
+  const seg = document.getElementById('crm-segmento-sel').value;
+
+  let lista = crmAgregado.slice();
+
+  if (seg === 'top') {
+    lista.sort((a, b) => b.total_amount - a.total_amount);
+    lista = lista.slice(0, TOP_LIMIT);
+  } else if (seg !== 'todos') {
+    lista = lista.filter(c => segmentoCliente(c) === seg);
+  }
+
+  if (q) {
+    lista = lista.filter(c =>
+      (c.name || '').toLowerCase().includes(q) ||
+      (c.email || '').toLowerCase().includes(q) ||
+      (c.phone || '').includes(q)
+    );
+  }
+
+  const sortKey = crmSortState.col;
+  const sortDir = crmSortState.dir;
+  lista.sort((a, b) => {
+    let av, bv;
+    if (sortKey === 'name') { av = (a.name || '').toLowerCase(); bv = (b.name || '').toLowerCase(); }
+    else if (sortKey === 'contact') { av = (a.email || a.phone || '').toLowerCase(); bv = (b.email || b.phone || '').toLowerCase(); }
+    else if (sortKey === 'city') { av = (a.city || '').toLowerCase(); bv = (b.city || '').toLowerCase(); }
+    else if (sortKey === 'last_sale') { av = a.last_sale || ''; bv = b.last_sale || ''; }
+    else { av = a[sortKey] || 0; bv = b[sortKey] || 0; }
+    if (av < bv) return -sortDir;
+    if (av > bv) return sortDir;
+    return 0;
+  });
+
+  document.getElementById('crm-count').textContent = lista.length + ' cliente' + (lista.length === 1 ? '' : 's');
+
+  if (!lista.length) {
+    document.getElementById('crm-tbody').innerHTML =
+      `<tr><td colspan="9" style="text-align:center;padding:24px;color:#9CA3AF;">Sin clientes para este filtro</td></tr>`;
+    return;
+  }
+
+  document.getElementById('crm-tbody').innerHTML = lista.map(c => {
+    const seg = segmentoCliente(c);
+    const segLabel = ({ activos:'🔥 Activo', riesgo:'⚠️ Riesgo', dormidos:'🥶 Dormido', nuevos:'🆕 Nuevo', otros:'·' })[seg];
+    const segColor = ({ activos:'#16A34A', riesgo:'#D97706', dormidos:'#DC2626', nuevos:'#0EA5E9', otros:'#9CA3AF' })[seg];
+    const phoneClean = (c.phone || '').replace(/[^\d+]/g, '');
+    const waUrl = phoneClean ? `https://wa.me/${phoneClean.replace(/^\+/, '')}` : '';
+    const contacto = [
+      c.email ? `<div style="font-size:12px;">${c.email}</div>` : '',
+      c.phone ? `<div style="font-size:11px;color:#6B7280;">${c.phone}</div>` : '',
+    ].filter(Boolean).join('') || '<span style="color:#9CA3AF;">—</span>';
+    const ciudad = [c.city, c.province].filter(Boolean).join(', ') || '<span style="color:#9CA3AF;">—</span>';
+    const ult = c.dias_ultimo === null ? '—' : (c.dias_ultimo === 0 ? 'hoy' : `hace ${c.dias_ultimo}d`);
+    return `
+      <tr style="cursor:pointer;" onclick="abrirClienteModal(${c.id})">
+        <td><div style="font-weight:600;">${escapeHtml(c.name)}</div><div style="font-size:11px;color:#9CA3AF;">#${c.id}</div></td>
+        <td onclick="event.stopPropagation()">${contacto}</td>
+        <td>${ciudad}</td>
+        <td style="text-align:right;">${c.total_sales}</td>
+        <td style="text-align:right;font-weight:600;">${fmtMonto(c.total_amount)}</td>
+        <td style="text-align:right;">${fmtMonto(c.avg_ticket)}</td>
+        <td style="text-align:right;"><div>${ult}</div><div style="font-size:11px;color:#9CA3AF;">${fmtFecha(c.last_sale)}</div></td>
+        <td><span style="font-size:11px;color:${segColor};font-weight:600;">${segLabel}</span></td>
+        <td onclick="event.stopPropagation()" style="white-space:nowrap;">
+          ${waUrl ? `<a href="${waUrl}" target="_blank" rel="noopener" class="btn-sm" style="text-decoration:none;display:inline-block;">WA</a>` : ''}
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function abrirClienteModal(id) {
+  const c = crmAgregado.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('cm-name').textContent = c.name;
+  const partes = [
+    c.email ? `📧 ${c.email}` : '',
+    c.phone ? `📱 ${c.phone}` : '',
+    c.city ? `📍 ${[c.city, c.province].filter(Boolean).join(', ')}` : '',
+  ].filter(Boolean).join(' · ');
+  document.getElementById('cm-meta').innerHTML = partes;
+
+  const ventasOrden = c.ventas.slice().sort((a, b) => (b.date_sale || '').localeCompare(a.date_sale || ''));
+  const stats = `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
+      <div class="stat"><div class="stat-label">Pedidos</div><div class="stat-value" style="font-size:22px;">${c.total_sales}</div></div>
+      <div class="stat"><div class="stat-label">Total comprado</div><div class="stat-value" style="font-size:18px;">${fmtMonto(c.total_amount)}</div></div>
+      <div class="stat"><div class="stat-label">Ticket prom.</div><div class="stat-value" style="font-size:18px;">${fmtMonto(c.avg_ticket)}</div></div>
+      <div class="stat"><div class="stat-label">Último pedido</div><div class="stat-value" style="font-size:16px;">${c.dias_ultimo === null ? '—' : 'hace '+c.dias_ultimo+'d'}</div><div style="font-size:11px;color:#9CA3AF;">${fmtFecha(c.last_sale)}</div></div>
+    </div>
+    <div style="font-size:12px;color:#6B7280;margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Historial de pedidos (${ventasOrden.length})</div>
+    <table style="font-size:12px;">
+      <thead><tr><th>Fecha</th><th>N°</th><th style="text-align:right;">Total</th><th>Estado</th></tr></thead>
+      <tbody>
+        ${ventasOrden.map(v => `<tr><td>${fmtFecha(v.date_sale)}</td><td>#${v.id}</td><td style="text-align:right;">${fmtMonto(v.total_price || 0)}</td><td style="font-size:11px;color:#6B7280;">${v.sale_state || '—'}</td></tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+  document.getElementById('cm-body').innerHTML = stats;
+  document.getElementById('cliente-modal').style.display = 'flex';
+}
+
+function cerrarClienteModal() {
+  document.getElementById('cliente-modal').style.display = 'none';
+}
+
+// Cerrar modal con Escape o click en backdrop
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') cerrarClienteModal();
+});
+document.addEventListener('click', e => {
+  if (e.target.id === 'cliente-modal') cerrarClienteModal();
+});
 </script>
 </body>
 </html>
