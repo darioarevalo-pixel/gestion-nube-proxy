@@ -793,7 +793,7 @@
         </div>
 
         <!-- Stats segmentos -->
-        <div id="crm-segmentos" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px;"></div>
+        <div id="crm-segmentos" style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px;"></div>
 
         <!-- Toolbar -->
         <div class="toolbar">
@@ -805,6 +805,7 @@
             <option value="riesgo">⚠️ En riesgo</option>
             <option value="dormidos">🥶 Dormidos (90+ días)</option>
             <option value="nuevos">🆕 Nuevos</option>
+            <option value="sin-tel">📵 Sin teléfono (cargar)</option>
           </select>
           <span style="font-size:12px;color:#9CA3AF;margin-left:auto;" id="crm-count"></span>
         </div>
@@ -3388,13 +3389,14 @@ function renderCRM() {
   crmAgregado = calcularAgregadoCRM();
 
   // Stats por segmento
-  const counts = { top: Math.min(TOP_LIMIT, crmAgregado.length), activos: 0, riesgo: 0, dormidos: 0, nuevos: 0 };
+  const counts = { top: Math.min(TOP_LIMIT, crmAgregado.length), activos: 0, riesgo: 0, dormidos: 0, nuevos: 0, sinTel: 0 };
   for (const c of crmAgregado) {
     const seg = segmentoCliente(c);
     if (seg === 'activos')  counts.activos++;
     else if (seg === 'riesgo')   counts.riesgo++;
     else if (seg === 'dormidos') counts.dormidos++;
     else if (seg === 'nuevos')   counts.nuevos++;
+    if (!normalizeArgPhone(c.phone)) counts.sinTel++;
   }
 
   document.getElementById('crm-segmentos').innerHTML = [
@@ -3403,6 +3405,7 @@ function renderCRM() {
     { key: 'riesgo',  label: '⚠️ En riesgo',     n: counts.riesgo,  hint: '30 a 90 días sin comprar' },
     { key: 'dormidos',label: '🥶 Dormidos',      n: counts.dormidos,hint: '> 90 días sin comprar' },
     { key: 'nuevos',  label: '🆕 Nuevos',        n: counts.nuevos,  hint: 'Primer pedido < 30d' },
+    { key: 'sin-tel', label: '📵 Sin teléfono',   n: counts.sinTel,  hint: 'Cargar el número en GN' },
   ].map(s => `
     <div class="stat" style="cursor:pointer;" onclick="seleccionarSegmento('${s.key}')">
       <div class="stat-label">${s.label}</div>
@@ -3434,6 +3437,8 @@ function renderCRMTabla() {
   if (seg === 'top') {
     lista.sort((a, b) => b.total_amount - a.total_amount);
     lista = lista.slice(0, TOP_LIMIT);
+  } else if (seg === 'sin-tel') {
+    lista = lista.filter(c => !normalizeArgPhone(c.phone));
   } else if (seg !== 'todos') {
     lista = lista.filter(c => segmentoCliente(c) === seg);
   }
@@ -3474,10 +3479,12 @@ function renderCRMTabla() {
     const segColor = ({ activos:'#16A34A', riesgo:'#D97706', dormidos:'#DC2626', nuevos:'#0EA5E9', otros:'#9CA3AF' })[seg];
     const waPhone = normalizeArgPhone(c.phone);
     const waUrl = waPhone ? `https://wa.me/${waPhone}` : '';
-    const contacto = [
-      c.email ? `<div style="font-size:12px;">${c.email}</div>` : '',
-      c.phone ? `<div style="font-size:11px;color:#6B7280;">${c.phone}</div>` : '',
-    ].filter(Boolean).join('') || '<span style="color:#9CA3AF;">—</span>';
+    const sinTel = !waPhone;
+    const contactoBits = [];
+    if (c.email) contactoBits.push(`<div style="font-size:12px;">${c.email}</div>`);
+    if (c.phone) contactoBits.push(`<div style="font-size:11px;color:#6B7280;">${c.phone}</div>`);
+    if (sinTel) contactoBits.push(`<div style="font-size:10px;color:#DC2626;font-weight:600;margin-top:2px;">📵 Sin teléfono</div>`);
+    const contacto = contactoBits.length ? contactoBits.join('') : '<span style="color:#9CA3AF;">—</span>';
     const ciudad = [c.city, c.province].filter(Boolean).join(', ') || '<span style="color:#9CA3AF;">—</span>';
     const ult = c.dias_ultimo === null ? '—' : (c.dias_ultimo === 0 ? 'hoy' : `hace ${c.dias_ultimo}d`);
     return `
