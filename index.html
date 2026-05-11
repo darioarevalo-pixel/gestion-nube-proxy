@@ -308,6 +308,8 @@
           <option value="">Todos los proveedores</option>
         </select>
         <select id="lifespan-method" onchange="lifespanMethod=this.value;renderProductos()">
+          <option value="7d">Vida útil: últimos 7d</option>
+          <option value="15d">Vida útil: últimos 15d</option>
           <option value="30d">Vida útil: últimos 30d</option>
           <option value="firstSale">Vida útil: desde 1ª venta</option>
         </select>
@@ -1106,8 +1108,20 @@ function lifespanDays(stock, sales30) {
   return Math.round((stock / sales30) * 30);
 }
 
+function lifespanDaysGeneric(stock, sales, periodDays) {
+  if (!sales || sales <= 0) return null;
+  return Math.round((stock / sales) * periodDays);
+}
+
 function lifespanStr(stock, sales30) {
   const d = lifespanDays(stock, sales30);
+  if (d === null) return stock > 0 ? 'Sin movimiento' : '—';
+  if (d > 365) return '+1 año';
+  if (d > 60) return Math.round(d / 30) + ' meses';
+  return d + ' días';
+}
+
+function formatLifespan(d, stock) {
   if (d === null) return stock > 0 ? 'Sin movimiento' : '—';
   if (d > 365) return '+1 año';
   if (d > 60) return Math.round(d / 30) + ' meses';
@@ -1146,6 +1160,7 @@ function procesarYRenderizar(productos, ventas, detalles, inventario, vmMes, vmC
   const vprod = {};
   const vvar = {};
   const cutoff7  = new Date(TODAY); cutoff7.setDate(cutoff7.getDate() - 7);
+  const cutoff15 = new Date(TODAY); cutoff15.setDate(cutoff15.getDate() - 15);
   const cutoff30 = new Date(TODAY); cutoff30.setDate(cutoff30.getDate() - 30);
   const cutoff60 = new Date(TODAY); cutoff60.setDate(cutoff60.getDate() - 60);
   const cutoff90 = new Date(TODAY); cutoff90.setDate(cutoff90.getDate() - 90);
@@ -1174,20 +1189,22 @@ function procesarYRenderizar(productos, ventas, detalles, inventario, vmMes, vmC
     const name = item.product_name || '';
     const size = item.size || '';
 
-    if (!vprod[pid]) vprod[pid] = { total: 0, s7: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null, first: null, name };
+    if (!vprod[pid]) vprod[pid] = { total: 0, s7: 0, s15: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null, first: null, name };
     vprod[pid].total += qty;
     vprod[pid].byMonth[fechaMes] = (vprod[pid].byMonth[fechaMes] || 0) + qty;
     if (fechaObj >= cutoff7)  vprod[pid].s7  += qty;
+    if (fechaObj >= cutoff15) vprod[pid].s15 += qty;
     if (fechaObj >= cutoff30) vprod[pid].s30 += qty;
     else if (fechaObj >= cutoff60) vprod[pid].s60 += qty;
     if (fechaObj >= cutoff90) vprod[pid].s90 += qty;
     if (!vprod[pid].last  || fecha > vprod[pid].last)  vprod[pid].last  = fecha;
     if (!vprod[pid].first || fecha < vprod[pid].first) vprod[pid].first = fecha;
 
-    if (!vvar[vid]) vvar[vid] = { total: 0, s7: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null, name, size, pid, sid };
+    if (!vvar[vid]) vvar[vid] = { total: 0, s7: 0, s15: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null, name, size, pid, sid };
     vvar[vid].total += qty;
     vvar[vid].byMonth[fechaMes] = (vvar[vid].byMonth[fechaMes] || 0) + qty;
     if (fechaObj >= cutoff7)  vvar[vid].s7  += qty;
+    if (fechaObj >= cutoff15) vvar[vid].s15 += qty;
     if (fechaObj >= cutoff30) vvar[vid].s30 += qty;
     else if (fechaObj >= cutoff60) vvar[vid].s60 += qty;
     if (!vvar[vid].last || fecha > vvar[vid].last) vvar[vid].last = fecha;
@@ -1224,7 +1241,7 @@ function procesarYRenderizar(productos, ventas, detalles, inventario, vmMes, vmC
 
   allProductos = (productos || []).map(p => {
     const pid = String(p.id);
-    const d = vprod[pid] || { total: 0, s7: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null, first: null };
+    const d = vprod[pid] || { total: 0, s7: 0, s15: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null, first: null };
     const dsl = d.last ? daysSince(d.last) : 999;
     const stock = invByProduct[pid] || 0;
     const ls = lifespanDays(stock, d.s30);
@@ -1236,7 +1253,7 @@ function procesarYRenderizar(productos, ventas, detalles, inventario, vmMes, vmC
       ingresoMes,
       firstSale: d.first || null,
       lastSale: d.last || null, daysSinceLast: dsl,
-      sales7: d.s7, sales30: d.s30, sales60: d.s60, sales90: d.s90, totalSales: d.total,
+      sales7: d.s7, sales15: d.s15, sales30: d.s30, sales60: d.s60, sales90: d.s90, totalSales: d.total,
       monthlySales: months.map(m => d.byMonth[m] || 0),
       stock,
       lifespan:      ls      === null ? 99999 : ls,
@@ -1271,12 +1288,12 @@ function procesarYRenderizar(productos, ventas, detalles, inventario, vmMes, vmC
   const activeProductIds = new Set(allProductos.map(p => p.id));
 
   allVariantes = Object.values(variantesMap).filter(v => activeProductIds.has(v.pid)).map(v => {
-    const d = vvar[v.id] || { total: 0, s7: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null };
+    const d = vvar[v.id] || { total: 0, s7: 0, s15: 0, s30: 0, s60: 0, s90: 0, byMonth: {}, last: null };
     const dsl = d.last ? daysSince(d.last) : 999;
     const ls = lifespanDays(v.stock, d.s30);
     return {
       ...v, lastSale: d.last || null, daysSinceLast: dsl,
-      sales7: d.s7, sales30: d.s30, sales60: d.s60, sales90: d.s90, totalSales: d.total,
+      sales7: d.s7, sales15: d.s15, sales30: d.s30, sales60: d.s60, sales90: d.s90, totalSales: d.total,
       lifespan: ls === null ? 99999 : ls,
       phase: getPhase(d.s60, d.s30, dsl)
     };
@@ -1561,23 +1578,29 @@ function clearIngresoPills() {
   renderProductos();
 }
 
+function lifespanDaysByMode(p, mode) {
+  if (mode === 'firstSale') return lifespanDaysFromFirst(p.stock, p.totalSales, p.firstSale);
+  if (mode === '7d')        return lifespanDaysGeneric(p.stock, p.sales7,  7);
+  if (mode === '15d')       return lifespanDaysGeneric(p.stock, p.sales15, 15);
+  return lifespanDays(p.stock, p.sales30);
+}
+
 function renderProductos() {
   const { col, dir } = sortState.productos;
   let lista = filtrarLista(allProductos, 'search-prod', 'filter-prod');
   const provFiltro = document.getElementById('filter-prod-prov')?.value || '';
   if (provFiltro) lista = lista.filter(p => p.proveedor === provFiltro);
   if (selectedIngresoPills.size) lista = lista.filter(p => selectedIngresoPills.has(p.ingresoMes));
+  lista = lista.map(p => ({ ...p, lifespan: lifespanDaysByMode(p, lifespanMethod) ?? 99999 }));
   lista = sortList(lista, col, dir);
   const page = pageState.productos;
   const slice = lista.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
   renderPagination(lista.length, page, 'productos');
-  const useFirst = lifespanMethod === 'firstSale';
   document.getElementById('tbody-productos').innerHTML = slice.map(p => {
     const isExpanded = expandedProductPid === p.id;
     const meta = [p.sku, p.proveedor].filter(Boolean).join(' · ');
-    const lsStr = useFirst
-      ? lifespanStrFromFirst(p.stock, p.totalSales, p.firstSale)
-      : lifespanStr(p.stock, p.sales30);
+    const lsDays = lifespanDaysByMode(p, lifespanMethod);
+    const lsStr = formatLifespan(lsDays, p.stock);
     const detailRow = isExpanded
       ? `<tr><td colspan="8" style="padding:0;background:#f8f9ff;border-bottom:2px solid #d0dbf5;">${buildProductoDetalle(p.id)}</td></tr>`
       : '';
