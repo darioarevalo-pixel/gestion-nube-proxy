@@ -908,6 +908,7 @@ const TODAY = new Date();
 let allProductos = [], allVariantes = [];
 let sortState = { productos: { col: 'sales30', dir: -1 }, variantes: { col: 'sales30', dir: -1 } };
 let pageState = { productos: 1, variantes: 1 };
+let detalleVarSort = { col: 'total', dir: -1 };
 const PAGE_SIZE = 50;
 let rankChart = null, cChart = null, sChart = null, vmChart = null, fmChart = null, provChart = null, provCompChart = null, provCompraChart = null, colChart = null, tallesChart = null;
 let tabsRendered = {};
@@ -1626,11 +1627,15 @@ function toggleProductoDetalle(pid) {
   renderProductos();
 }
 
+function sortDetalleVar(col) {
+  if (detalleVarSort.col === col) detalleVarSort.dir *= -1;
+  else { detalleVarSort.col = col; detalleVarSort.dir = -1; }
+  renderProductos();
+}
+
 function buildProductoDetalle(pid) {
   // Variantes con ventas
-  const varSales = Object.values(allVvar)
-    .filter(v => v.pid === pid)
-    .sort((a, b) => b.total - a.total);
+  const varSales = Object.values(allVvar).filter(v => v.pid === pid);
 
   // Stock por variant id
   const stockByVid = {};
@@ -1641,13 +1646,20 @@ function buildProductoDetalle(pid) {
   const stockOnly = allVariantes.filter(v => v.pid === pid && !seen.has(v.id));
 
   const allItems = [
-    ...varSales.map(v => ({ size: v.size, total: v.total, s30: v.s30, stock: stockByVid[pid + '_' + v.sid] || 0 })),
-    ...stockOnly.map(v => ({ size: v.size, total: 0, s30: 0, stock: v.stock })),
+    ...varSales.map(v => ({ size: v.size, total: v.total, s7: v.s7, s30: v.s30, stock: stockByVid[pid + '_' + v.sid] || 0 })),
+    ...stockOnly.map(v => ({ size: v.size, total: 0, s7: 0, s30: 0, stock: v.stock })),
   ];
 
   if (!allItems.length) {
     return '<div style="padding:12px 20px;color:#aaa;font-size:12px;">Sin variantes registradas</div>';
   }
+
+  const { col: sCol, dir: sDir } = detalleVarSort;
+  allItems.sort((a, b) => {
+    const va = a[sCol], vb = b[sCol];
+    if (typeof va === 'string') return sDir * (va || '').localeCompare(vb || '');
+    return sDir * ((va || 0) - (vb || 0));
+  });
 
   const totalVendido = allItems.reduce((s, v) => s + v.total, 0);
   const rows = allItems.map(v => {
@@ -1657,19 +1669,25 @@ function buildProductoDetalle(pid) {
       <td style="padding:5px 16px 5px 0;font-size:13px;font-weight:600;">${v.total.toLocaleString('es-AR')}
         ${totalVendido > 0 ? `<span style="font-size:10px;color:#aaa;margin-left:4px;">${pct}%</span>` : ''}
       </td>
+      <td style="padding:5px 16px 5px 0;font-size:13px;color:#1D9E75;font-weight:600;">${v.s7.toLocaleString('es-AR')}</td>
       <td style="padding:5px 16px 5px 0;font-size:13px;color:#666;">${v.s30.toLocaleString('es-AR')}</td>
       <td style="padding:5px 0;font-size:13px;color:${v.stock < 3 ? '#e24b4a' : v.stock < 10 ? '#ba7517' : '#666'};">${v.stock.toLocaleString('es-AR')}</td>
     </tr>`;
   }).join('');
 
+  const thBase  = 'font-size:11px;color:#888;font-weight:500;text-align:left;padding:0 16px 6px 0;';
+  const thClick = thBase + 'cursor:pointer;user-select:none;';
+  const thLast  = 'font-size:11px;color:#888;font-weight:500;text-align:left;padding:0 0 6px 0;cursor:pointer;user-select:none;';
+
   return `<div style="padding:10px 20px 14px;">
     <div style="font-size:11px;font-weight:600;color:#7F77DD;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">▾ Desglose por variante</div>
     <table style="width:auto;">
       <thead><tr>
-        <th style="font-size:11px;color:#888;font-weight:500;text-align:left;padding:0 16px 6px 0;">Variante</th>
-        <th style="font-size:11px;color:#888;font-weight:500;text-align:left;padding:0 16px 6px 0;">Total vendido</th>
-        <th style="font-size:11px;color:#888;font-weight:500;text-align:left;padding:0 16px 6px 0;">Últimos 30d</th>
-        <th style="font-size:11px;color:#888;font-weight:500;text-align:left;padding:0 0 6px 0;">Stock</th>
+        <th style="${thBase}">Variante</th>
+        <th style="${thClick}" onclick="event.stopPropagation();sortDetalleVar('total')">Total vendido ↕</th>
+        <th style="${thClick}" onclick="event.stopPropagation();sortDetalleVar('s7')">Últimos 7d ↕</th>
+        <th style="${thClick}" onclick="event.stopPropagation();sortDetalleVar('s30')">Últimos 30d ↕</th>
+        <th style="${thLast}" onclick="event.stopPropagation();sortDetalleVar('stock')">Stock ↕</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
